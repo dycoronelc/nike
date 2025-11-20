@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, X } from 'lucide-react'
+import { Send, Bot, X } from 'lucide-react'
 import { sendChatMessage } from '../api'
 import { ChatMessage } from './'
 import './Chatbot.css'
@@ -9,7 +9,7 @@ interface ChatbotProps {
 }
 
 export default function Chatbot({ onClose }: ChatbotProps) {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; data?: any; graphType?: string }>>([
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; data?: any; graphType?: string; config?: any }>>([
     {
       role: 'assistant',
       content: '¡Hola! Soy tu asistente de IA para análisis de datos. Puedo ayudarte con:\n\n• Consultas sobre ventas totales\n• Evolución y tendencias temporales\n• Predicciones de ventas futuras\n• Análisis de clusters y patrones\n• Estado de inventario\n• Análisis por sucursal o producto\n\n¿Qué te gustaría saber?',
