@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build outputs
+dist/
+build/
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Datos - Los archivos Excel y CSV deben estar en el repo para Railway
+# NOTA: Asegúrate de que estos archivos estén incluidos en git:
+# - MUESTRA DE DATA CENTURY.xlsx
+# - Sell Out.xlsx o SellOut.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PWA
+sw.js
+workbox-*.js
+

@@ -1,0 +1,85 @@
+.message {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.message-user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.message-user .message-avatar {
+  background: var(--accent);
+  color: var(--text-primary);
+}
+
+.message-assistant .message-avatar {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.message-content {
+  flex: 1;
+  max-width: calc(100% - 52px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.message-user .message-content {
+  align-items: flex-end;
+}
+
+.message-text {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.message-user .message-text {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.message-text p {
+  margin: 0 0 0.5rem 0;
+}
+
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.message-text strong {
+  font-weight: 600;
+}
+
+.message-graph {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.message-user .message-graph {
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .message-content {
+    max-width: calc(100% - 48px);
+  }
+}
+
