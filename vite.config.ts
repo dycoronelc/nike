@@ -36,6 +36,16 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: process.env.PORT ? parseInt(process.env.PORT) : 4173,
+    strictPort: false,
+    allowedHosts: [
+      'nike-production-edd5.up.railway.app',
+      '.up.railway.app', // Permite todos los subdominios de Railway
+      'localhost'
+    ]
   }
 })
 
