@@ -27,7 +27,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     setFilters({})
   }
 
-  const hasActiveFilters = Object.keys(filters).length > 0 && (
+  const hasActiveFilters: boolean = !!(
     (filters.fechaDesde && filters.fechaDesde !== '') ||
     (filters.fechaHasta && filters.fechaHasta !== '') ||
     (filters.generos && filters.generos.length > 0) ||
