@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { FilterProvider } from './contexts/FilterContext'
 import { Layout, Dashboard, Chatbot } from './components'
 import './App.css'
 
@@ -8,9 +9,11 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Layout activeView={activeView} setActiveView={setActiveView}>
-        {activeView === 'dashboard' ? <Dashboard /> : <Chatbot onClose={() => setActiveView('dashboard')} />}
-      </Layout>
+      <FilterProvider>
+        <Layout activeView={activeView} setActiveView={setActiveView}>
+          {activeView === 'dashboard' ? <Dashboard /> : <Chatbot onClose={() => setActiveView('dashboard')} />}
+        </Layout>
+      </FilterProvider>
     </ThemeProvider>
   )
 }

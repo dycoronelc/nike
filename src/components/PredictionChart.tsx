@@ -1,4 +1,5 @@
 import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts'
+import { Info } from 'lucide-react'
 import './PredictionChart.css'
 
 interface PredictionChartProps {
@@ -23,9 +24,10 @@ interface PredictionChartProps {
       r2: number
     }
   }
+  onInfoClick?: () => void
 }
 
-export default function PredictionChart({ data }: PredictionChartProps) {
+export default function PredictionChart({ data, onInfoClick }: PredictionChartProps) {
   // Preparar datos históricos para el gráfico
   const historicalChartData = data.historicos?.map(h => ({
     fecha: h.fecha,
@@ -63,9 +65,16 @@ export default function PredictionChart({ data }: PredictionChartProps) {
   return (
     <div className="prediction-chart">
       <div className="prediction-header">
-        <div>
-          <h4>Modelo: {data.modelo}</h4>
-          <p>R²: {data.metrica.r2.toFixed(4)}</p>
+        <div className="prediction-header-content">
+          <div>
+            <h4>Modelo: {data.modelo}</h4>
+            <p>R²: {data.metrica.r2.toFixed(4)}</p>
+          </div>
+          {onInfoClick && (
+            <button className="chart-info-button" onClick={onInfoClick} title="Ver información">
+              <Info size={18} />
+            </button>
+          )}
         </div>
         <div className="prediction-metrics">
           <div className="metric-item">

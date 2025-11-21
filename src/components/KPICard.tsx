@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react'
 import './KPICard.css'
 
 interface KPICardProps {
@@ -6,9 +7,11 @@ interface KPICardProps {
   format?: 'currency' | 'number' | 'percentage'
   subtitle?: string
   color?: 'info' | 'success' | 'warning' | 'danger'
+  infoKey?: string
+  onInfoClick?: (infoKey: string) => void
 }
 
-export default function KPICard({ title, value, format = 'number', subtitle, color = 'info' }: KPICardProps) {
+export default function KPICard({ title, value, format = 'number', subtitle, color = 'info', infoKey, onInfoClick }: KPICardProps) {
   const formatValue = (val: number | undefined) => {
     if (val === undefined || val === null || isNaN(val)) return 'N/A'
 
@@ -23,10 +26,22 @@ export default function KPICard({ title, value, format = 'number', subtitle, col
     }
   }
 
+  const handleInfoClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (infoKey && onInfoClick) {
+      onInfoClick(infoKey)
+    }
+  }
+
   return (
     <div className={`kpi-card kpi-card-${color}`}>
       <div className="kpi-header">
         <h4 className="kpi-title">{title}</h4>
+        {infoKey && (
+          <button className="kpi-info-button" onClick={handleInfoClick} title="Ver información">
+            <Info size={16} />
+          </button>
+        )}
       </div>
       <div className="kpi-value">{formatValue(value)}</div>
       {subtitle && <div className="kpi-subtitle">{subtitle}</div>}

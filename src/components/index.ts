@@ -7,4 +7,6 @@ export { default as PredictionChart } from './PredictionChart'
 export { default as ClusterChart } from './ClusterChart'
 export { default as ChatMessage } from './ChatMessage'
 export { default as DataTable } from './DataTable'
+export { default as Filters } from './Filters'
+export { default as InfoModal } from './InfoModal'
 

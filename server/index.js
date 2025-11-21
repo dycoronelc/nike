@@ -46,12 +46,27 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// Endpoint para obtener opciones de filtros
+app.get('/api/filter-options', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const options = await db.getFilterOptions();
+    res.json(options);
+  } catch (error) {
+    console.error('Error obteniendo opciones de filtros:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/kpis', async (req, res) => {
   if (!dbConnected) {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
-    const kpis = await db.getKPIs();
+    const filters = req.query.filters ? JSON.parse(req.query.filters) : {};
+    const kpis = await db.getKPIsWithFilters(filters);
     res.json(kpis);
   } catch (error) {
     console.error('Error obteniendo KPIs:', error);
@@ -106,7 +121,8 @@ app.get('/api/time-series', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
-    const timeSeries = await db.getTimeSeries();
+    const filters = req.query.filters ? JSON.parse(req.query.filters) : {};
+    const timeSeries = await db.getTimeSeriesWithFilters(filters);
     res.json(timeSeries);
   } catch (error) {
     console.error('Error obteniendo series temporales:', error);

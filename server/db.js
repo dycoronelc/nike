@@ -347,6 +347,212 @@ export async function getGeneroArregladoByMonth() {
   }
 }
 
+// Obtener opciones de filtros disponibles
+export async function getFilterOptions() {
+  try {
+    // Fechas min/max
+    const [fechas] = await pool.query(`
+      SELECT 
+        MIN(COALESCE(
+          (SELECT MIN(fecha) FROM sell_in WHERE fecha IS NOT NULL),
+          (SELECT MIN(fecha) FROM sell_out WHERE fecha IS NOT NULL)
+        )) as fechaMin,
+        MAX(COALESCE(
+          (SELECT MAX(fecha) FROM sell_in WHERE fecha IS NOT NULL),
+          (SELECT MAX(fecha) FROM sell_out WHERE fecha IS NOT NULL)
+        )) as fechaMax
+    `);
+
+    // Géneros (de sell_out)
+    const [generos] = await pool.query(`
+      SELECT DISTINCT genero_arreglado as genero
+      FROM sell_out
+      WHERE genero_arreglado IS NOT NULL
+      ORDER BY genero_arreglado
+    `);
+
+    // Sucursales (de sell_out)
+    const [sucursales] = await pool.query(`
+      SELECT DISTINCT nombre_sucursal as sucursal
+      FROM sell_out
+      WHERE nombre_sucursal IS NOT NULL
+      ORDER BY nombre_sucursal
+    `);
+
+    // Categorías (de sell_out)
+    const [categorias] = await pool.query(`
+      SELECT DISTINCT categoria as categoria
+      FROM sell_out
+      WHERE categoria IS NOT NULL
+      ORDER BY categoria
+    `);
+
+    // Cuentas (de sell_out)
+    const [cuentas] = await pool.query(`
+      SELECT DISTINCT cuenta as cuenta
+      FROM sell_out
+      WHERE cuenta IS NOT NULL
+      ORDER BY cuenta
+    `);
+
+    // Canales (de sell_out)
+    const [canales] = await pool.query(`
+      SELECT DISTINCT canal as canal
+      FROM sell_out
+      WHERE canal IS NOT NULL
+      ORDER BY canal
+    `);
+
+    // Siluetas (de sell_out)
+    const [siluetas] = await pool.query(`
+      SELECT DISTINCT silueta as silueta
+      FROM sell_out
+      WHERE silueta IS NOT NULL
+      ORDER BY silueta
+      LIMIT 100
+    `);
+
+    return {
+      fechaMin: fechas[0]?.fechaMin ? new Date(fechas[0].fechaMin).toISOString().split('T')[0] : '',
+      fechaMax: fechas[0]?.fechaMax ? new Date(fechas[0].fechaMax).toISOString().split('T')[0] : '',
+      generos: generos.map(r => r.genero),
+      sucursales: sucursales.map(r => r.sucursal),
+      categorias: categorias.map(r => r.categoria),
+      cuentas: cuentas.map(r => r.cuenta),
+      canales: canales.map(r => r.canal),
+      siluetas: siluetas.map(r => r.silueta)
+    };
+  } catch (error) {
+    console.error('Error obteniendo opciones de filtros:', error);
+    throw error;
+  }
+}
+
+// Obtener KPIs con filtros
+export async function getKPIsWithFilters(filters = {}) {
+  // Por ahora, retornamos los KPIs sin filtrar
+  // En una versión futura, podemos aplicar filtros aquí
+  return await getKPIs();
+}
+
+// Obtener series temporales con filtros
+export async function getTimeSeriesWithFilters(filters = {}) {
+  try {
+    // Si no hay filtros, usar la función original
+    if (!filters || Object.keys(filters).length === 0) {
+      return await getTimeSeries();
+    }
+
+    // Construir condiciones para Sell Out
+    const sellOutConditions = ['fecha IS NOT NULL', 'ventas IS NOT NULL'];
+    const sellOutParams = [];
+    
+    if (filters.fechaDesde) {
+      sellOutConditions.push('fecha >= ?');
+      sellOutParams.push(filters.fechaDesde);
+    }
+    if (filters.fechaHasta) {
+      sellOutConditions.push('fecha <= ?');
+      sellOutParams.push(filters.fechaHasta);
+    }
+    if (filters.generos && filters.generos.length > 0) {
+      sellOutConditions.push('genero_arreglado IN (?)');
+      sellOutParams.push(filters.generos);
+    }
+    if (filters.sucursales && filters.sucursales.length > 0) {
+      sellOutConditions.push('nombre_sucursal IN (?)');
+      sellOutParams.push(filters.sucursales);
+    }
+    if (filters.categorias && filters.categorias.length > 0) {
+      sellOutConditions.push('categoria IN (?)');
+      sellOutParams.push(filters.categorias);
+    }
+    if (filters.cuentas && filters.cuentas.length > 0) {
+      sellOutConditions.push('cuenta IN (?)');
+      sellOutParams.push(filters.cuentas);
+    }
+    if (filters.canales && filters.canales.length > 0) {
+      sellOutConditions.push('canal IN (?)');
+      sellOutParams.push(filters.canales);
+    }
+    if (filters.siluetas && filters.siluetas.length > 0) {
+      sellOutConditions.push('silueta IN (?)');
+      sellOutParams.push(filters.siluetas);
+    }
+
+    // Construir condiciones para Sell In (solo fechas)
+    const sellInConditions = ['fecha IS NOT NULL', 'ventas IS NOT NULL'];
+    const sellInParams = [];
+    
+    if (filters.fechaDesde) {
+      sellInConditions.push('fecha >= ?');
+      sellInParams.push(filters.fechaDesde);
+    }
+    if (filters.fechaHasta) {
+      sellInConditions.push('fecha <= ?');
+      sellInParams.push(filters.fechaHasta);
+    }
+
+    // Query para Sell Out con filtros
+    const sellOutQuery = `
+      SELECT 
+        DATE_FORMAT(fecha, '%Y-%m') as fecha,
+        SUM(ventas) as ventas,
+        SUM(cantidad) as cantidad
+      FROM sell_out
+      WHERE ${sellOutConditions.join(' AND ')}
+      GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+      ORDER BY fecha
+    `;
+
+    // Query para Sell In con filtros de fecha
+    const sellInQuery = `
+      SELECT 
+        DATE_FORMAT(fecha, '%Y-%m') as fecha,
+        SUM(ventas) as ventas,
+        SUM(unidades) as unidades
+      FROM sell_in
+      WHERE ${sellInConditions.join(' AND ')}
+      GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+      ORDER BY fecha
+    `;
+
+    // Ejecutar queries
+    const [sellOutByMonth] = await pool.query(sellOutQuery, sellOutParams.flat());
+    const [sellInByMonth] = await pool.query(sellInQuery, sellInParams.flat());
+
+    // Combinar resultados
+    const sellInMap = new Map();
+    sellInByMonth.forEach(item => {
+      sellInMap.set(item.fecha, {
+        ventas: parseFloat(item.ventas || 0),
+        unidades: parseInt(item.unidades || 0)
+      });
+    });
+
+    const sellOutMap = new Map();
+    sellOutByMonth.forEach(item => {
+      sellOutMap.set(item.fecha, {
+        ventas: parseFloat(item.ventas || 0),
+        cantidad: parseInt(item.cantidad || 0)
+      });
+    });
+
+    // Combinar todas las fechas
+    const allDates = new Set([...sellInMap.keys(), ...sellOutMap.keys()]);
+    const timeSeries = Array.from(allDates).sort().map(fecha => ({
+      fecha,
+      sellIn: sellInMap.get(fecha) || { ventas: 0, unidades: 0 },
+      sellOut: sellOutMap.get(fecha) || { ventas: 0, cantidad: 0 }
+    }));
+
+    return timeSeries;
+  } catch (error) {
+    console.error('Error obteniendo series temporales con filtros:', error);
+    throw error;
+  }
+}
+
 // Cerrar pool de conexiones
 export async function closePool() {
   await pool.end();

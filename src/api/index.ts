@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { FilterOptions } from '../contexts/FilterContext'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -9,13 +10,15 @@ const api = axios.create({
   },
 })
 
-export const fetchKPIs = async () => {
-  const response = await api.get('/kpis')
+export const fetchKPIs = async (filters?: FilterOptions) => {
+  const params = filters ? { filters: JSON.stringify(filters) } : {}
+  const response = await api.get('/kpis', { params })
   return response.data
 }
 
-export const fetchTimeSeries = async () => {
-  const response = await api.get('/time-series')
+export const fetchTimeSeries = async (filters?: FilterOptions) => {
+  const params = filters ? { filters: JSON.stringify(filters) } : {}
+  const response = await api.get('/time-series', { params })
   return response.data
 }
 

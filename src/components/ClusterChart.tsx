@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter } from 'recharts'
+import { Info } from 'lucide-react'
 import './ClusterChart.css'
 
 interface ClusterChartProps {
@@ -28,9 +29,10 @@ interface ClusterChartProps {
       }>
     }>
   }
+  onInfoClick?: () => void
 }
 
-export default function ClusterChart({ data }: ClusterChartProps) {
+export default function ClusterChart({ data, onInfoClick }: ClusterChartProps) {
   const clusterData = data.caracteristicas.map(c => ({
     nombre: c.nombre,
     cantidad: c.cantidad,
@@ -50,8 +52,17 @@ export default function ClusterChart({ data }: ClusterChartProps) {
   return (
     <div className="cluster-chart">
       <div className="cluster-header">
-        <h4>Segmentación por Patrones</h4>
-        <p>Se identificaron {data.caracteristicas.length} clusters distintos</p>
+        <div className="cluster-header-content">
+          <div>
+            <h4>Segmentación por Patrones</h4>
+            <p>Se identificaron {data.caracteristicas.length} clusters distintos</p>
+          </div>
+          {onInfoClick && (
+            <button className="chart-info-button" onClick={onInfoClick} title="Ver información">
+              <Info size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="cluster-grid">

@@ -1,27 +1,87 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { KPICard, TimeSeriesChart, PredictionChart, ClusterChart } from './'
+import { KPICard, TimeSeriesChart, PredictionChart, ClusterChart, InfoModal } from './'
 import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchClusters } from '../api'
+import { useFilters } from '../contexts/FilterContext'
+import { indicatorsInfo } from '../data/indicatorsInfo'
 import './Dashboard.css'
 
 export default function Dashboard() {
+  const { filters } = useFilters()
+  const [infoModal, setInfoModal] = useState<{ isOpen: boolean; key: string }>({
+    isOpen: false,
+    key: ''
+  })
+
+  const handleInfoClick = (infoKey: string) => {
+    setInfoModal({ isOpen: true, key: infoKey })
+  }
+
+  const handleCloseInfo = () => {
+    setInfoModal({ isOpen: false, key: '' })
+  }
+
+  const getInfoData = (key: string) => {
+    const info = indicatorsInfo[key]
+    if (!info) return null
+    
+    let title = ''
+    if (key === 'timeSeriesChart') {
+      title = 'Gráfico de Evolución Temporal'
+    } else if (key === 'predictionChart') {
+      title = 'Gráfico de Predicciones'
+    } else if (key === 'clusterChart') {
+      title = 'Gráfico de Clustering'
+    } else {
+      // Para KPIs, crear título descriptivo
+      const parts = key.split('-')
+      if (parts[0] === 'sellIn' && parts[1] === 'totalVentas') {
+        title = 'Sell In - Total Ventas'
+      } else if (parts[0] === 'sellOut' && parts[1] === 'totalVentas') {
+        title = 'Sell Out - Total Ventas'
+      } else if (parts[0] === 'inventario' && parts[1] === 'totalExistencia') {
+        title = 'Inventario Total'
+      } else if (parts[0] === 'general' && parts[1] === 'ratioSellOutSellIn') {
+        title = 'Ratio Sell Out/Sell In'
+      } else if (parts[0] === 'sellIn' && parts[1] === 'promedioTicket') {
+        title = 'Promedio Ticket Sell In'
+      } else if (parts[0] === 'sellOut' && parts[1] === 'promedioTicket') {
+        title = 'Promedio Ticket Sell Out'
+      } else if (parts[0] === 'general' && parts[1] === 'totalRegistros') {
+        title = 'Total Registros'
+      } else if (parts[0] === 'general' && parts[1] === 'promedioMensual') {
+        title = 'Promedio Mensual Ventas'
+      } else {
+        title = key.split('-').map(k => k.charAt(0).toUpperCase() + k.slice(1)).join(' - ')
+      }
+    }
+    
+    return {
+      title,
+      ...info
+    }
+  }
+
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['kpis'],
-    queryFn: fetchKPIs,
+    queryKey: ['kpis', filters],
+    queryFn: () => fetchKPIs(filters),
   })
 
   const { data: timeSeries, isLoading: timeSeriesLoading } = useQuery({
-    queryKey: ['timeSeries'],
-    queryFn: fetchTimeSeries,
+    queryKey: ['timeSeries', filters],
+    queryFn: () => fetchTimeSeries(filters),
   })
 
   const { data: predictions, isLoading: predictionsLoading } = useQuery({
-    queryKey: ['predictions'],
+    queryKey: ['predictions', timeSeries],
     queryFn: fetchPredictions,
+    enabled: !!timeSeries,
   })
 
   const { data: clusters, isLoading: clustersLoading } = useQuery({
-    queryKey: ['clusters'],
+    queryKey: ['clusters', timeSeries, kpis],
     queryFn: fetchClusters,
+    enabled: !!timeSeries && !!kpis,
   })
 
   if (kpisLoading) {
@@ -50,6 +110,8 @@ export default function Dashboard() {
             format="currency"
             subtitle={`${kpis?.sellIn?.totalUnidades?.toLocaleString()} unidades`}
             color="info"
+            infoKey="sellIn-totalVentas"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Sell Out - Total Ventas"
@@ -57,6 +119,8 @@ export default function Dashboard() {
             format="currency"
             subtitle={`${kpis?.sellOut?.totalUnidades?.toLocaleString()} unidades`}
             color="success"
+            infoKey="sellOut-totalVentas"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Inventario Total"
@@ -64,6 +128,8 @@ export default function Dashboard() {
             format="number"
             subtitle={`${kpis?.inventario?.sucursales} sucursales`}
             color="warning"
+            infoKey="inventario-totalExistencia"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Ratio Sell Out/Sell In"
@@ -71,6 +137,8 @@ export default function Dashboard() {
             format="percentage"
             subtitle={`${kpis?.general?.productosUnicos} productos únicos`}
             color="info"
+            infoKey="general-ratioSellOutSellIn"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Promedio Ticket Sell In"
@@ -78,6 +146,8 @@ export default function Dashboard() {
             format="currency"
             subtitle="Ticket promedio"
             color="info"
+            infoKey="sellIn-promedioTicket"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Promedio Ticket Sell Out"
@@ -85,6 +155,8 @@ export default function Dashboard() {
             format="currency"
             subtitle="Ticket promedio"
             color="success"
+            infoKey="sellOut-promedioTicket"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Total Registros"
@@ -92,6 +164,8 @@ export default function Dashboard() {
             format="number"
             subtitle={`${kpis?.general?.totalUnidades?.toLocaleString()} unidades totales`}
             color="warning"
+            infoKey="general-totalRegistros"
+            onInfoClick={handleInfoClick}
           />
           <KPICard
             title="Promedio Mensual Ventas"
@@ -99,6 +173,8 @@ export default function Dashboard() {
             format="currency"
             subtitle={`${kpis?.general?.sucursalesSellOut} sucursales Sell Out`}
             color="info"
+            infoKey="general-promedioMensual"
+            onInfoClick={handleInfoClick}
           />
         </div>
       </section>
@@ -109,7 +185,7 @@ export default function Dashboard() {
         {timeSeriesLoading ? (
           <div className="chart-loading">Cargando gráfico...</div>
         ) : (
-          <TimeSeriesChart data={timeSeries || []} />
+          <TimeSeriesChart data={timeSeries || []} onInfoClick={() => handleInfoClick('timeSeriesChart')} />
         )}
       </section>
 
@@ -119,7 +195,7 @@ export default function Dashboard() {
         {predictionsLoading ? (
           <div className="chart-loading">Calculando predicciones...</div>
         ) : (
-          predictions && <PredictionChart data={predictions} />
+          predictions && <PredictionChart data={predictions} onInfoClick={() => handleInfoClick('predictionChart')} />
         )}
       </section>
 
@@ -129,9 +205,25 @@ export default function Dashboard() {
         {clustersLoading ? (
           <div className="chart-loading">Calculando clusters...</div>
         ) : (
-          clusters && <ClusterChart data={clusters} />
+          clusters && <ClusterChart data={clusters} onInfoClick={() => handleInfoClick('clusterChart')} />
         )}
       </section>
+
+      {/* Info Modal */}
+      {infoModal.isOpen && (() => {
+        const infoData = getInfoData(infoModal.key)
+        if (!infoData) return null
+        return (
+          <InfoModal
+            isOpen={infoModal.isOpen}
+            onClose={handleCloseInfo}
+            title={infoData.title}
+            description={infoData.description}
+            meaning={infoData.meaning}
+            calculation={infoData.calculation}
+          />
+        )
+      })()}
     </div>
   )
 }

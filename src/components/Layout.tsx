@@ -1,6 +1,8 @@
-import { ReactNode } from 'react'
-import { MessageCircle, Sun, Moon } from 'lucide-react'
+import { ReactNode, useState } from 'react'
+import { MessageCircle, Sun, Moon, Filter } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
+import { useFilters } from '../contexts/FilterContext'
+import Filters from './Filters'
 import './Layout.css'
 
 interface LayoutProps {
@@ -11,6 +13,8 @@ interface LayoutProps {
 
 export default function Layout({ children, activeView, setActiveView }: LayoutProps) {
   const { theme, toggleTheme } = useTheme()
+  const { hasActiveFilters } = useFilters()
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const handleDashboardClick = () => {
     setActiveView('dashboard')
@@ -29,6 +33,17 @@ export default function Layout({ children, activeView, setActiveView }: LayoutPr
             </div>
           </div>
           <nav className="nav">
+            {activeView === 'dashboard' && (
+              <button
+                className={`nav-button filters-button ${hasActiveFilters ? 'has-filters' : ''}`}
+                onClick={() => setFiltersOpen(true)}
+                title="Filtros"
+              >
+                <Filter size={20} />
+                <span>Filtros</span>
+                {hasActiveFilters && <span className="filter-badge">•</span>}
+              </button>
+            )}
             <button
               className={`nav-button ${activeView === 'dashboard' ? 'active' : ''}`}
               onClick={handleDashboardClick}
@@ -50,6 +65,7 @@ export default function Layout({ children, activeView, setActiveView }: LayoutPr
       <main className="main">
         {children}
       </main>
+      <Filters isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} />
     </div>
   )
 }
