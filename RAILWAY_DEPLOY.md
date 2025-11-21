@@ -29,7 +29,7 @@ git commit -m "Initial commit - Nike Dashboard PWA"
 
 2. **Crea un repositorio en GitHub** y luego:
 ```bash
-git remote add origin https://github.com/TU_USUARIO/TU_REPO.git
+git remote add origin https://github.com/dycoronelc/nike.git
 git branch -M main
 git push -u origin main
 ```

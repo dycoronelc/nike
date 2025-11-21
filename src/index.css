@@ -5,6 +5,39 @@
 }
 
 :root {
+  /* Modo Oscuro (default) */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #2a2a2a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --accent: #000000;
+  --accent-hover: #1a1a1a;
+  --border: #333333;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+}
+
+/* Modo Claro */
+:root.light-theme {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e5e5;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --accent: #ffffff;
+  --accent-hover: #f0f0f0;
+  --border: #d0d0d0;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+}
+
+/* Modo Oscuro explícito */
+:root.dark-theme {
   --bg-primary: #0a0a0a;
   --bg-secondary: #1a1a1a;
   --bg-tertiary: #2a2a2a;
@@ -55,6 +88,11 @@ code {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
+  background: var(--border);
+}
+
+/* Transiciones suaves para cambios de tema */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 

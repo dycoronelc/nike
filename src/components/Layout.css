@@ -87,6 +87,24 @@
   border-color: var(--accent);
 }
 
+/* Estilo especial para el botón Dashboard en modo claro */
+:root.light-theme .nav-button.active {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #d0d0d0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajustes para modo claro */
+:root.light-theme .nav-button {
+  color: var(--text-secondary);
+}
+
+:root.light-theme .nav-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
 .main {
   flex: 1;
   max-width: 1400px;

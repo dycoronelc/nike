@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
-import { Activity, MessageCircle } from 'lucide-react'
+import { MessageCircle, Sun, Moon } from 'lucide-react'
+import { useTheme } from '../contexts/ThemeContext'
 import './Layout.css'
 
 interface LayoutProps {
@@ -9,6 +10,13 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, activeView, setActiveView }: LayoutProps) {
+  const { theme, toggleTheme } = useTheme()
+
+  const handleDashboardClick = () => {
+    setActiveView('dashboard')
+    toggleTheme()
+  }
+
   return (
     <div className="layout">
       <header className="header">
@@ -23,9 +31,10 @@ export default function Layout({ children, activeView, setActiveView }: LayoutPr
           <nav className="nav">
             <button
               className={`nav-button ${activeView === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveView('dashboard')}
+              onClick={handleDashboardClick}
+              title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
-              <Activity size={20} />
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               <span>Dashboard</span>
             </button>
             <button
