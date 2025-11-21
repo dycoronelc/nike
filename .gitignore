@@ -17,6 +17,8 @@ build/
 # Una vez cargada la data en MySQL, no se necesitan en el repo
 *.xlsx
 *.csv
+*.zip
+*.sql.zip
 !database/schema.sql
 
 # IDE
