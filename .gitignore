@@ -12,10 +12,12 @@ build/
 .env.local
 .env.production
 
-# Datos - Los archivos Excel y CSV deben estar en el repo para Railway
-# NOTA: Asegúrate de que estos archivos estén incluidos en git:
-# - MUESTRA DE DATA CENTURY.xlsx
-# - Sell Out.xlsx o SellOut.csv
+# Datos - Los archivos Excel y CSV son muy grandes, no se suben a GitHub
+# Estos archivos se usan solo localmente para inicializar la BD
+# Una vez cargada la data en MySQL, no se necesitan en el repo
+*.xlsx
+*.csv
+!database/schema.sql
 
 # IDE
 .vscode/
