@@ -1,5 +1,6 @@
 import { mean, standardDeviation, linearRegression } from 'simple-statistics';
 import { Matrix } from 'ml-matrix';
+import OpenAI from 'openai';
 
 // Predicción de ventas usando regresión lineal
 export async function predictSales(timeSeries, monthsAhead = 3) {
@@ -359,8 +360,208 @@ function analyzePerformance(timeSeries) {
   };
 }
 
-// Análisis de consultas del chatbot mejorado con insights profundos
+// Inicializar cliente OpenAI (si está configurado)
+let openaiClient = null;
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+    console.log('✅ OpenAI client inicializado correctamente');
+  } catch (error) {
+    console.error('⚠️ Error inicializando OpenAI:', error.message);
+  }
+}
+
+// Función para generar respuesta usando OpenAI
+async function generateOpenAIResponse(query, processedData, rawData) {
+  if (!openaiClient) {
+    return null;
+  }
+
+  try {
+    // Ejecutar análisis ML primero para obtener contexto
+    const anomalies = detectAnomalies(processedData.timeSeries);
+    const trends = analyzeTrends(processedData.timeSeries);
+    const performance = analyzePerformance(processedData.timeSeries);
+    const recommendations = generateRecommendations(processedData.kpis, processedData.timeSeries, anomalies);
+    
+    // Preparar datos resumidos para el prompt
+    const kpis = processedData.kpis;
+    const recentData = processedData.timeSeries.slice(-6);
+    
+    // Detectar qué tipo de análisis podría necesitarse
+    const lowerQuery = query.toLowerCase();
+    let contextData = {};
+    let analysisResults = null;
+    
+    if (lowerQuery.includes('predicción') || lowerQuery.includes('futuro')) {
+      const predictions = await predictSales(processedData.timeSeries);
+      analysisResults = { predictions };
+    } else if (lowerQuery.includes('clusters') || lowerQuery.includes('segmentación')) {
+      const clusters = await calculateClusters(processedData);
+      analysisResults = { clusters };
+    } else if (lowerQuery.includes('sucursal')) {
+      const sucursales = await rawData.getSucursales();
+      contextData = { topSucursales: sucursales.slice(0, 10) };
+    } else if (lowerQuery.includes('producto') || lowerQuery.includes('silueta')) {
+      const productos = await rawData.getProductos();
+      contextData = { topProductos: productos.slice(0, 10) };
+    }
+    
+    // Construir prompt estructurado
+    const prompt = `Eres un asistente experto en análisis de datos de ventas e inventario para una empresa distribuidora de Nike (Northbay International Inc.).
+
+CONTEXTO DEL NEGOCIO:
+- Sell In: Ventas de la empresa a distribuidores/clientes
+- Sell Out: Ventas de los distribuidores a consumidores finales
+- El ratio Sell Out/Sell In mide la eficiencia de ventas de los distribuidores
+
+DATOS ACTUALES:
+- Sell In Total: $${kpis.sellIn.totalVentas.toLocaleString('es-CO')}
+- Sell Out Total: $${kpis.sellOut.totalVentas.toLocaleString('es-CO')}
+- Total Ventas: $${(kpis.sellIn.totalVentas + kpis.sellOut.totalVentas).toLocaleString('es-CO')}
+- Ratio Sell Out/Sell In: ${kpis.general.ratioSellOutSellIn.toFixed(2)}%
+- Promedio Mensual: $${kpis.general.promedioMensual.toLocaleString('es-CO')}
+- Inventario Total: ${kpis.inventario.totalExistencia.toLocaleString('es-CO')} unidades
+- Sucursales: ${kpis.inventario.sucursales}
+- Total Registros: ${kpis.general.totalRegistros.toLocaleString('es-CO')}
+
+${performance ? `PERFORMANCE:
+- Cambio mes anterior: ${performance.changePercent > 0 ? '+' : ''}${performance.changePercent.toFixed(1)}%
+- Vs. Promedio histórico: ${performance.vsAverage > 0 ? '+' : ''}${performance.vsAverage.toFixed(1)}%
+` : ''}
+
+${trends ? `TENDENCIAS (últimos 6 meses):
+- Tendencia: ${trends.trend === 'creciendo' ? '📈 Creciente' : trends.trend === 'decreciendo' ? '📉 Decreciente' : '➡️ Estable'}
+- Cambio: ${trends.changePercent > 0 ? '+' : ''}${trends.changePercent.toFixed(1)}%
+` : ''}
+
+${anomalies && anomalies.length > 0 ? `ANOMALÍAS DETECTADAS:
+${anomalies.slice(-3).map(a => `- ${a.fecha}: ${a.tipo} (desviación: ${a.desviacion.toFixed(2)})`).join('\n')}
+` : ''}
+
+${recommendations && recommendations.length > 0 ? `RECOMENDACIONES DEL SISTEMA:
+${recommendations.slice(0, 3).map(r => `- ${r.tipo}: ${r.titulo} - ${r.mensaje}`).join('\n')}
+` : ''}
+
+${analysisResults && analysisResults.predictions ? `PREDICCIONES (Modelo ML):
+${analysisResults.predictions.predicciones.map(p => `- ${p.fecha}: $${p.prediccion.toLocaleString('es-CO')} (confianza: ${p.confianza.toFixed(1)}%)`).join('\n')}
+- R² del modelo: ${analysisResults.predictions.metrica.r2.toFixed(3)}
+` : ''}
+
+${contextData.topSucursales ? `TOP SUCURSALES:
+${contextData.topSucursales.map((s, i) => `${i + 1}. ${s.nombre}: $${s.ventas.toLocaleString('es-CO')}`).join('\n')}
+` : ''}
+
+${contextData.topProductos ? `TOP PRODUCTOS:
+${contextData.topProductos.map((p, i) => `${i + 1}. ${p.nombre}: $${p.ventas.toLocaleString('es-CO')}`).join('\n')}
+` : ''}
+
+CONSULTA DEL USUARIO: "${query}"
+
+INSTRUCCIONES:
+1. Responde de forma natural y conversacional en español
+2. Utiliza los datos proporcionados para generar insights profundos y relevantes
+3. Sé específico con números y porcentajes
+4. Proporciona análisis contextual, no solo repitas los datos
+5. Identifica oportunidades y riesgos basándote en los datos
+6. Si la consulta requiere un gráfico específico, indica qué tipo de visualización sería útil
+7. Mantén el formato profesional pero accesible
+
+RESPUESTA:`;
+
+    // Llamar a OpenAI
+    const completion = await openaiClient.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un asistente experto en análisis de datos de ventas con conocimiento profundo en retail y distribución. Proporcionas insights valiosos, recomendaciones accionables y análisis contextual basados en datos reales.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const aiResponse = completion.choices[0].message.content;
+    
+    // Determinar si necesita gráfico basándose en la consulta original
+    let needsGraph = false;
+    let graphType = null;
+    let graphData = null;
+    
+    if (analysisResults && analysisResults.predictions) {
+      needsGraph = true;
+      graphType = 'prediction';
+      graphData = analysisResults.predictions;
+    } else if (analysisResults && analysisResults.clusters) {
+      needsGraph = true;
+      graphType = 'cluster';
+      graphData = analysisResults.clusters;
+    } else if (lowerQuery.includes('evolución') || lowerQuery.includes('tendencia') || lowerQuery.includes('tiempo')) {
+      needsGraph = true;
+      graphType = 'line';
+      graphData = processedData.timeSeries;
+    } else if (contextData.topSucursales) {
+      needsGraph = true;
+      graphType = 'bar';
+      graphData = contextData.topSucursales;
+    } else if (contextData.topProductos) {
+      needsGraph = true;
+      graphType = 'bar';
+      graphData = contextData.topProductos;
+    }
+    
+    return {
+      texto: aiResponse,
+      tipo: needsGraph ? 'grafico' : 'texto',
+      datos: graphData,
+      grafico: needsGraph ? {
+        tipo: graphType,
+        datos: graphData,
+        config: graphType === 'line' ? {
+          x: 'fecha',
+          y: ['sellIn.ventas', 'sellOut.ventas'],
+          titulo: 'Evolución de Ventas'
+        } : graphType === 'prediction' ? {
+          titulo: 'Predicción de Ventas'
+        } : graphType === 'cluster' ? {
+          titulo: 'Segmentación de Períodos'
+        } : {
+          x: graphType === 'bar' && contextData.topSucursales ? 'nombre' : 'nombre',
+          y: 'ventas',
+          titulo: contextData.topSucursales ? 'Top Sucursales' : 'Top Productos'
+        }
+      } : null,
+      insights: [],
+      recomendaciones: recommendations,
+      poweredBy: 'OpenAI'
+    };
+    
+  } catch (error) {
+    console.error('Error en OpenAI:', error.message);
+    return null; // Retornar null para usar fallback
+  }
+}
+
+// Análisis de consultas del chatbot mejorado con insights profundos + OpenAI
 export async function analyzeQuery(query, processedData, rawData) {
+  // Intentar usar OpenAI primero (si está configurado)
+  if (openaiClient) {
+    const openaiResponse = await generateOpenAIResponse(query, processedData, rawData);
+    if (openaiResponse) {
+      return openaiResponse;
+    }
+    // Si falla, continuar con el sistema actual
+    console.log('⚠️ OpenAI no respondió, usando análisis basado en reglas');
+  }
+  
+  // Sistema actual (fallback y cuando OpenAI no está configurado)
   const lowerQuery = query.toLowerCase();
   
   // Detectar tipo de consulta y generar respuesta con insights
