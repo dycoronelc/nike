@@ -564,6 +564,7 @@ export async function getTimeSeriesWithFilters(filters = {}) {
 // Obtener datos de productos con métricas para clustering
 export async function getProductosForClustering() {
   try {
+    // Optimizado: Usar JOINs en lugar de subconsultas correlacionadas
     const [rows] = await pool.query(`
       SELECT 
         so.silueta,
@@ -576,21 +577,29 @@ export async function getProductosForClustering() {
         COUNT(*) as frecuencia_ventas,
         COUNT(DISTINCT so.nombre_sucursal) as sucursales_distintas,
         COUNT(DISTINCT DATE_FORMAT(so.fecha, '%Y-%m')) as meses_activos,
-        -- Ratio sell out / sell in
-        COALESCE(
-          (SELECT SUM(si.ventas) FROM sell_in si WHERE si.silueta = so.silueta),
-          0
-        ) as sell_in_total,
-        -- Inventario promedio
-        COALESCE(
-          (SELECT AVG(i.existencia) FROM inventario i WHERE i.categoria = so.categoria),
-          0
-        ) as inventario_promedio
+        -- Ratio sell out / sell in (usando LEFT JOIN en lugar de subconsulta)
+        COALESCE(SUM(si_agg.sell_in_total), 0) as sell_in_total,
+        -- Inventario promedio (usando LEFT JOIN en lugar de subconsulta)
+        COALESCE(inv_agg.inventario_promedio, 0) as inventario_promedio
       FROM sell_out so
+      -- JOIN para sell_in total por silueta
+      LEFT JOIN (
+        SELECT silueta, SUM(ventas) as sell_in_total
+        FROM sell_in
+        WHERE silueta IS NOT NULL AND ventas IS NOT NULL
+        GROUP BY silueta
+      ) si_agg ON si_agg.silueta = so.silueta
+      -- JOIN para inventario promedio por categoria
+      LEFT JOIN (
+        SELECT categoria, AVG(existencia) as inventario_promedio
+        FROM inventario
+        WHERE categoria IS NOT NULL AND existencia IS NOT NULL
+        GROUP BY categoria
+      ) inv_agg ON inv_agg.categoria = so.categoria
       WHERE so.silueta IS NOT NULL 
         AND so.ventas IS NOT NULL
         AND so.cantidad IS NOT NULL
-      GROUP BY so.silueta, so.categoria, so.familia, so.genero_arreglado
+      GROUP BY so.silueta, so.categoria, so.familia, so.genero_arreglado, inv_agg.inventario_promedio
       HAVING ventas_totales > 0 AND unidades_totales > 0
       ORDER BY ventas_totales DESC
     `);
@@ -624,6 +633,7 @@ export async function getProductosForClustering() {
 // Obtener datos de sucursales con métricas para clustering
 export async function getSucursalesForClustering() {
   try {
+    // Optimizado: Usar JOINs en lugar de subconsultas correlacionadas
     const [rows] = await pool.query(`
       SELECT 
         so.nombre_sucursal,
@@ -634,21 +644,29 @@ export async function getSucursalesForClustering() {
         AVG(so.ventas / NULLIF(so.cantidad, 0)) as ticket_promedio_sucursal,
         COUNT(DISTINCT so.silueta) as diversidad_productos,
         COUNT(DISTINCT DATE_FORMAT(so.fecha, '%Y-%m')) as meses_activos,
-        -- Ratio sell out / sell in
-        COALESCE(
-          (SELECT SUM(si.ventas) FROM sell_in si WHERE si.nombre_sucursal = so.nombre_sucursal),
-          0
-        ) as sell_in_total,
-        -- Inventario promedio
-        COALESCE(
-          (SELECT AVG(i.existencia) FROM inventario i WHERE i.nombre_sucursal = so.nombre_sucursal),
-          0
-        ) as inventario_promedio
+        -- Ratio sell out / sell in (usando LEFT JOIN)
+        COALESCE(si_agg.sell_in_total, 0) as sell_in_total,
+        -- Inventario promedio (usando LEFT JOIN)
+        COALESCE(inv_agg.inventario_promedio, 0) as inventario_promedio
       FROM sell_out so
+      -- JOIN para sell_in total por sucursal
+      LEFT JOIN (
+        SELECT nombre_sucursal, SUM(ventas) as sell_in_total
+        FROM sell_in
+        WHERE nombre_sucursal IS NOT NULL AND ventas IS NOT NULL
+        GROUP BY nombre_sucursal
+      ) si_agg ON si_agg.nombre_sucursal = so.nombre_sucursal
+      -- JOIN para inventario promedio por sucursal
+      LEFT JOIN (
+        SELECT nombre_sucursal, AVG(existencia) as inventario_promedio
+        FROM inventario
+        WHERE nombre_sucursal IS NOT NULL AND existencia IS NOT NULL
+        GROUP BY nombre_sucursal
+      ) inv_agg ON inv_agg.nombre_sucursal = so.nombre_sucursal
       WHERE so.nombre_sucursal IS NOT NULL
         AND so.ventas IS NOT NULL
         AND so.cantidad IS NOT NULL
-      GROUP BY so.nombre_sucursal, so.canal, so.cuenta
+      GROUP BY so.nombre_sucursal, so.canal, so.cuenta, si_agg.sell_in_total, inv_agg.inventario_promedio
       HAVING ventas_totales_sucursal > 0 AND unidades_totales_sucursal > 0
       ORDER BY ventas_totales_sucursal DESC
     `);
@@ -899,11 +917,12 @@ export async function getAnalisisABC() {
 export async function getTiempoReposicion() {
   try {
     // Obtener frecuencia de pedidos por sucursal/producto
+    // Nota: sell_in tiene categoria_descripcion, no categoria
     const [pedidos] = await pool.query(`
       SELECT 
         si.nombre_sucursal,
         si.silueta,
-        si.categoria,
+        si.categoria_descripcion as categoria,
         COUNT(DISTINCT DATE(si.fecha)) as dias_con_pedidos,
         MIN(si.fecha) as primera_fecha,
         MAX(si.fecha) as ultima_fecha,
@@ -911,7 +930,7 @@ export async function getTiempoReposicion() {
         COUNT(*) as total_pedidos
       FROM sell_in si
       WHERE si.fecha IS NOT NULL
-      GROUP BY si.nombre_sucursal, si.silueta, si.categoria
+      GROUP BY si.nombre_sucursal, si.silueta, si.categoria_descripcion
       HAVING dias_totales > 0
     `);
 

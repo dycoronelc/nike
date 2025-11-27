@@ -337,19 +337,21 @@ function normalizeFeatures(features) {
   return features[0].map((_, i) => normalized.map(col => col[i]));
 }
 
-function kMeans(features, k, maxIterations = 100) {
-  // Inicializar centroides aleatoriamente
-  let centroids = [];
-  for (let i = 0; i < k; i++) {
-    const randomIndex = Math.floor(Math.random() * features.length);
-    centroids.push([...features[randomIndex]]);
+function kMeans(features, k, maxIterations = 50) {
+  // Optimizado: Reducir iteraciones máximas de 100 a 50 (suficiente para convergencia en la mayoría de casos)
+  if (features.length === 0 || k === 0) {
+    return { labels: [], centroids: [] };
   }
+  
+  // Inicializar centroides usando método K-means++ (mejor que aleatorio)
+  let centroids = initializeCentroidsKMeansPlusPlus(features, k);
 
   let labels = new Array(features.length).fill(0);
   let previousLabels = null;
   let iterations = 0;
+  let converged = false;
 
-  while (iterations < maxIterations) {
+  while (iterations < maxIterations && !converged) {
     // Asignar puntos a clusters
     labels = features.map(point => {
       let minDist = Infinity;
@@ -366,6 +368,7 @@ function kMeans(features, k, maxIterations = 100) {
 
     // Verificar convergencia
     if (previousLabels && arraysEqual(labels, previousLabels)) {
+      converged = true;
       break;
     }
     previousLabels = [...labels];
@@ -384,6 +387,48 @@ function kMeans(features, k, maxIterations = 100) {
   }
 
   return { labels, centroids };
+}
+
+// Inicialización K-means++ (mejor que aleatorio, converge más rápido)
+function initializeCentroidsKMeansPlusPlus(features, k) {
+  const centroids = [];
+  const n = features.length;
+  
+  // Primer centroide aleatorio
+  const firstIndex = Math.floor(Math.random() * n);
+  centroids.push([...features[firstIndex]]);
+  
+  // Seleccionar k-1 centroides restantes
+  for (let i = 1; i < k; i++) {
+    const distances = features.map(point => {
+      // Distancia mínima al centroide más cercano
+      return Math.min(...centroids.map(centroid => {
+        let sum = 0;
+        for (let j = 0; j < point.length; j++) {
+          sum += Math.pow(point[j] - centroid[j], 2);
+        }
+        return Math.sqrt(sum);
+      }));
+    });
+    
+    // Calcular probabilidades (distancia al cuadrado)
+    const probabilities = distances.map(d => d * d);
+    const sumProb = probabilities.reduce((a, b) => a + b, 0);
+    const normalized = probabilities.map(p => p / sumProb);
+    
+    // Seleccionar siguiente centroide basado en probabilidades
+    let random = Math.random();
+    let cumulative = 0;
+    for (let j = 0; j < n; j++) {
+      cumulative += normalized[j];
+      if (random <= cumulative) {
+        centroids.push([...features[j]]);
+        break;
+      }
+    }
+  }
+  
+  return centroids;
 }
 
 function euclideanDistance(a, b) {
@@ -445,6 +490,25 @@ export async function calculateProductClusters(productosData, k = 4) {
   for (let i = 0; i < k; i++) {
     const clusterItems = clusteredProducts.filter(item => item.cluster === i);
     if (clusterItems.length > 0) {
+      // Agrupar productos por silueta única, sumando ventas si hay duplicados
+      const productosAgrupados = {};
+      clusterItems.forEach(item => {
+        const key = item.silueta;
+        if (!productosAgrupados[key]) {
+          productosAgrupados[key] = {
+            silueta: item.silueta,
+            categoria: item.categoria, // Tomar la primera categoría encontrada
+            ventas: 0
+          };
+        }
+        productosAgrupados[key].ventas += item.ventas_totales;
+      });
+      
+      // Convertir a array y ordenar por ventas
+      const productosUnicos = Object.values(productosAgrupados)
+        .sort((a, b) => b.ventas - a.ventas)
+        .slice(0, 10); // Top 10 productos únicos del cluster
+      
       clusterCharacteristics.push({
         cluster: i,
         cantidad: clusterItems.length,
@@ -452,11 +516,7 @@ export async function calculateProductClusters(productosData, k = 4) {
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
         promedioRotacion: mean(clusterItems.map(item => item.rotacion_inventario)),
-        productos: clusterItems.map(item => ({
-          silueta: item.silueta,
-          categoria: item.categoria,
-          ventas: item.ventas_totales
-        })).sort((a, b) => b.ventas - a.ventas).slice(0, 10) // Top 10 productos del cluster
+        productos: productosUnicos
       });
     }
   }

@@ -6,6 +6,7 @@ import cors from 'cors';
 import { predictSales, calculateClusters, calculateProductClusters, calculateSucursalClusters, analyzeQuery } from './ml-service.js';
 import * as db from './db.js';
 import { testConnection } from './db.js';
+import * as cache from './cache.js';
 
 // Cargar variables de entorno desde la raíz del proyecto
 const __filename = fileURLToPath(import.meta.url);
@@ -66,7 +67,25 @@ app.get('/api/kpis', async (req, res) => {
   }
   try {
     const filters = req.query.filters ? JSON.parse(req.query.filters) : {};
+    const filtersKey = JSON.stringify(filters);
+    
+    // Cache solo si no hay filtros activos (filtros cambian frecuentemente)
+    const cacheKey = filtersKey === '{}' ? 'kpis:default' : null;
+    if (cacheKey) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        console.log('✅ KPIs obtenidos del cache');
+        return res.json(cached);
+      }
+    }
+    
     const kpis = await db.getKPIsWithFilters(filters);
+    
+    // Guardar en cache solo si no hay filtros (5 minutos)
+    if (cacheKey) {
+      cache.set(cacheKey, kpis, 5 * 60 * 1000);
+    }
+    
     res.json(kpis);
   } catch (error) {
     console.error('Error obteniendo KPIs:', error);
@@ -135,8 +154,20 @@ app.get('/api/predictions', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    // Intentar obtener del cache primero
+    const cacheKey = 'predictions';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Predicciones obtenidas del cache');
+      return res.json(cached);
+    }
+    
     const timeSeries = await db.getTimeSeries();
     const predictions = await predictSales(timeSeries);
+    
+    // Guardar en cache por 10 minutos (predicciones cambian poco)
+    cache.set(cacheKey, predictions, 10 * 60 * 1000);
+    
     res.json(predictions);
   } catch (error) {
     console.error('Error generando predicciones:', error);
@@ -207,6 +238,14 @@ app.get('/api/clusters/productos', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    // Intentar obtener del cache primero
+    const cacheKey = 'clusters:productos';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Clusters de productos obtenidos del cache');
+      return res.json(cached);
+    }
+    
     console.log('📦 Obteniendo datos de productos para clustering...');
     const productosData = await db.getProductosForClustering();
     console.log(`✅ Productos obtenidos: ${productosData.length}`);
@@ -214,6 +253,9 @@ app.get('/api/clusters/productos', async (req, res) => {
     console.log('🔍 Calculando clusters de productos...');
     const clusters = await calculateProductClusters(productosData);
     console.log(`✅ Clusters calculados: ${clusters.caracteristicas?.length || 0} clusters`);
+    
+    // Guardar en cache por 15 minutos (clusters cambian poco)
+    cache.set(cacheKey, clusters, 15 * 60 * 1000);
     
     res.json(clusters);
   } catch (error) {
@@ -229,6 +271,14 @@ app.get('/api/clusters/sucursales', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    // Intentar obtener del cache primero
+    const cacheKey = 'clusters:sucursales';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Clusters de sucursales obtenidos del cache');
+      return res.json(cached);
+    }
+    
     console.log('🏪 Obteniendo datos de sucursales para clustering...');
     const sucursalesData = await db.getSucursalesForClustering();
     console.log(`✅ Sucursales obtenidas: ${sucursalesData.length}`);
@@ -236,6 +286,9 @@ app.get('/api/clusters/sucursales', async (req, res) => {
     console.log('🔍 Calculando clusters de sucursales...');
     const clusters = await calculateSucursalClusters(sucursalesData);
     console.log(`✅ Clusters calculados: ${clusters.caracteristicas?.length || 0} clusters`);
+    
+    // Guardar en cache por 15 minutos (clusters cambian poco)
+    cache.set(cacheKey, clusters, 15 * 60 * 1000);
     
     res.json(clusters);
   } catch (error) {
@@ -251,10 +304,50 @@ app.get('/api/inventory-optimization', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    // Intentar obtener del cache primero
+    const cacheKey = 'inventory-optimization';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Métricas de optimización obtenidas del cache');
+      return res.json(cached);
+    }
+    
     const metrics = await db.getInventoryOptimizationMetrics();
+    
+    // Guardar en cache por 10 minutos
+    cache.set(cacheKey, metrics, 10 * 60 * 1000);
+    
     res.json(metrics);
   } catch (error) {
     console.error('Error obteniendo métricas de optimización:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para limpiar cache (útil después de actualizar datos)
+app.post('/api/cache/clear', async (req, res) => {
+  try {
+    const { pattern } = req.body;
+    if (pattern) {
+      cache.invalidatePattern(pattern);
+      res.json({ message: `Cache limpiado para patrón: ${pattern}` });
+    } else {
+      cache.clear();
+      res.json({ message: 'Todo el cache ha sido limpiado' });
+    }
+  } catch (error) {
+    console.error('Error limpiando cache:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para estadísticas del cache (debugging)
+app.get('/api/cache/stats', async (req, res) => {
+  try {
+    const stats = cache.getStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error obteniendo estadísticas de cache:', error);
     res.status(500).json({ error: error.message });
   }
 });
