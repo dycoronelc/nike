@@ -238,12 +238,22 @@ app.get('/api/clusters/productos', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
-    // Intentar obtener del cache primero
+    // Si se solicita forzar recálculo, limpiar cache
+    const forceRecalc = req.query.force === 'true';
     const cacheKey = 'clusters:productos';
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('✅ Clusters de productos obtenidos del cache');
-      return res.json(cached);
+    
+    if (forceRecalc) {
+      cache.del(cacheKey);
+      console.log('🔄 Cache de productos invalidado, forzando recálculo...');
+    }
+    
+    // Intentar obtener del cache primero (si no se forzó recálculo)
+    if (!forceRecalc) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        console.log('✅ Clusters de productos obtenidos del cache');
+        return res.json(cached);
+      }
     }
     
     console.log('📦 Obteniendo datos de productos para clustering...');
@@ -271,12 +281,22 @@ app.get('/api/clusters/sucursales', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
-    // Intentar obtener del cache primero
+    // Si se solicita forzar recálculo, limpiar cache
+    const forceRecalc = req.query.force === 'true';
     const cacheKey = 'clusters:sucursales';
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('✅ Clusters de sucursales obtenidos del cache');
-      return res.json(cached);
+    
+    if (forceRecalc) {
+      cache.del(cacheKey);
+      console.log('🔄 Cache de sucursales invalidado, forzando recálculo...');
+    }
+    
+    // Intentar obtener del cache primero (si no se forzó recálculo)
+    if (!forceRecalc) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        console.log('✅ Clusters de sucursales obtenidos del cache');
+        return res.json(cached);
+      }
     }
     
     console.log('🏪 Obteniendo datos de sucursales para clustering...');
@@ -415,5 +435,9 @@ app.post('/api/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
+  // Invalidar cache de clusters al iniciar para forzar recálculo con código nuevo
+  cache.del('clusters:productos');
+  cache.del('clusters:sucursales');
+  console.log('🔄 Cache de clusters invalidado al iniciar servidor');
 });
 
