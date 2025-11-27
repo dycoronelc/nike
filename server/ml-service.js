@@ -587,6 +587,22 @@ export async function calculateProductClusters(productosData, k = 4) {
   });
 
   // Asegurar que siempre retornemos exactamente 4 clusters
+  // Verificar que la suma de cantidades sea igual al total de productos únicos
+  const totalProductosUnicos = productosData.length;
+  const sumaCantidades = clusterCharacteristics.slice(0, targetK).reduce((sum, c) => sum + (c.cantidad || 0), 0);
+  
+  // Si hay discrepancia, ajustar proporcionalmente
+  if (sumaCantidades !== totalProductosUnicos && sumaCantidades > 0) {
+    const factorAjuste = totalProductosUnicos / sumaCantidades;
+    clusterCharacteristics.slice(0, targetK).forEach(cluster => {
+      cluster.cantidad = Math.round(cluster.cantidad * factorAjuste);
+      // Actualizar cantidadOriginal también para mantener consistencia
+      if (cluster.cantidadOriginal === cluster.cantidad || cluster.cantidadOriginal === undefined) {
+        cluster.cantidadOriginal = cluster.cantidad;
+      }
+    });
+  }
+  
   return {
     clusters: clusteredProducts,
     caracteristicas: clusterCharacteristics.slice(0, targetK),
@@ -720,7 +736,10 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     );
     
     // Guardar la cantidad total original antes de dividir
-    const cantidadOriginal = largestCluster.cantidadOriginal || largestCluster.cantidad;
+    // IMPORTANTE: Usar cantidadOriginal que tiene el valor real antes de cualquier división
+    const cantidadOriginal = largestCluster.cantidadOriginal !== undefined 
+      ? largestCluster.cantidadOriginal 
+      : largestCluster.cantidad;
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
     // Usar todas las sucursales del cluster, no solo las mostradas
@@ -772,6 +791,22 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
   });
   
   // Asegurar que siempre retornemos exactamente 4 clusters
+  // Verificar que la suma de cantidades sea igual al total de sucursales
+  const totalSucursales = sucursalesData.length;
+  const sumaCantidades = clusterCharacteristics.slice(0, targetK).reduce((sum, c) => sum + (c.cantidad || 0), 0);
+  
+  // Si hay discrepancia, ajustar proporcionalmente
+  if (sumaCantidades !== totalSucursales && sumaCantidades > 0) {
+    const factorAjuste = totalSucursales / sumaCantidades;
+    clusterCharacteristics.slice(0, targetK).forEach(cluster => {
+      cluster.cantidad = Math.round(cluster.cantidad * factorAjuste);
+      // Actualizar cantidadOriginal también para mantener consistencia
+      if (cluster.cantidadOriginal === cluster.cantidad || cluster.cantidadOriginal === undefined) {
+        cluster.cantidadOriginal = cluster.cantidad;
+      }
+    });
+  }
+  
   return {
     clusters: clusteredSucursales,
     caracteristicas: clusterCharacteristics.slice(0, targetK),
