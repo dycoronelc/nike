@@ -509,12 +509,14 @@ export async function calculateProductClusters(productosData, k = 4) {
       const productosUnicos = Object.values(productosAgrupados)
         .sort((a, b) => b.ventas - a.ventas);
       
-      // La cantidad debe ser el número de productos únicos (siluetas), no el número de registros
+      // La cantidad debe ser el número de productos únicos (siluetas) en este cluster
+      // Esta es la cantidad TOTAL de productos únicos en el cluster
       const cantidadProductosUnicos = productosUnicos.length;
       
       clusterCharacteristics.push({
         cluster: i,
-        cantidad: cantidadProductosUnicos, // Usar cantidad de productos únicos
+        cantidad: cantidadProductosUnicos, // Cantidad TOTAL de productos únicos en el cluster
+        cantidadOriginal: cantidadProductosUnicos, // Guardar cantidad original para divisiones
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales)),
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
@@ -533,7 +535,7 @@ export async function calculateProductClusters(productosData, k = 4) {
     );
     
     // Guardar la cantidad total original antes de dividir
-    const cantidadOriginal = largestCluster.cantidad;
+    const cantidadOriginal = largestCluster.cantidadOriginal || largestCluster.cantidad;
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
     const sortedProductos = [...largestCluster.productos].sort((a, b) => b.ventas - a.ventas);
@@ -544,13 +546,15 @@ export async function calculateProductClusters(productosData, k = 4) {
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
       // Calcular proporciones para mantener la cantidad total correcta
-      // Usar la cantidad real de productos únicos, no proporciones
-      const cantidadTop = topHalf.length;
-      const cantidadBottom = bottomHalf.length;
+      // La cantidad debe reflejar la proporción de productos únicos
+      const totalProductos = topHalf.length + bottomHalf.length;
+      const proporcionTop = topHalf.length / totalProductos;
+      const proporcionBottom = bottomHalf.length / totalProductos;
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(p => p.ventas));
-      largestCluster.cantidad = cantidadTop; // Cantidad real de productos únicos
+      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
+      largestCluster.cantidadOriginal = Math.round(cantidadOriginal * proporcionTop);
       largestCluster.promedioVentas = topVentas;
       largestCluster.productos = topHalf;
       
@@ -558,7 +562,8 @@ export async function calculateProductClusters(productosData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(p => p.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: cantidadBottom, // Cantidad real de productos únicos
+        cantidad: Math.round(cantidadOriginal * proporcionBottom), // Mantener proporción de cantidad total
+        cantidadOriginal: Math.round(cantidadOriginal * proporcionBottom),
         promedioVentas: bottomVentas,
         promedioUnidades: largestCluster.promedioUnidades,
         promedioTicket: largestCluster.promedioTicket,
@@ -687,9 +692,13 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
         ventas: item.ventas_totales_sucursal
       })).sort((a, b) => b.ventas - a.ventas);
       
+      // La cantidad es el número TOTAL de sucursales en este cluster
+      const cantidadTotal = clusterItems.length;
+      
       clusterCharacteristics.push({
         cluster: i,
-        cantidad: clusterItems.length,
+        cantidad: cantidadTotal, // Cantidad TOTAL de sucursales en el cluster
+        cantidadOriginal: cantidadTotal, // Guardar cantidad original para divisiones
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales_sucursal)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio_sucursal)),
         promedioRotacion: mean(clusterItems.map(item => item.rotacion_sucursal)),
@@ -707,7 +716,7 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     );
     
     // Guardar la cantidad total original antes de dividir
-    const cantidadOriginal = largestCluster.cantidad;
+    const cantidadOriginal = largestCluster.cantidadOriginal || largestCluster.cantidad;
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
     // Usar todas las sucursales del cluster, no solo las mostradas
@@ -718,13 +727,15 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     const bottomHalf = sortedSucursales.slice(midPoint);
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
-      // Usar la cantidad real de sucursales, no proporciones
-      const cantidadTop = topHalf.length;
-      const cantidadBottom = bottomHalf.length;
+      // Calcular proporciones para mantener la cantidad total correcta
+      const totalSucursales = topHalf.length + bottomHalf.length;
+      const proporcionTop = topHalf.length / totalSucursales;
+      const proporcionBottom = bottomHalf.length / totalSucursales;
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(s => s.ventas));
-      largestCluster.cantidad = cantidadTop; // Cantidad real de sucursales
+      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop); // Mantener proporción de cantidad total
+      largestCluster.cantidadOriginal = Math.round(cantidadOriginal * proporcionTop);
       largestCluster.promedioVentas = topVentas;
       largestCluster.sucursales = topHalf;
       
@@ -732,7 +743,8 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(s => s.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: cantidadBottom, // Cantidad real de sucursales
+        cantidad: Math.round(cantidadOriginal * proporcionBottom), // Mantener proporción de cantidad total
+        cantidadOriginal: Math.round(cantidadOriginal * proporcionBottom),
         promedioVentas: bottomVentas,
         promedioTicket: largestCluster.promedioTicket,
         promedioRotacion: largestCluster.promedioRotacion,
