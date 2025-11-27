@@ -505,9 +505,9 @@ export async function calculateProductClusters(productosData, k = 4) {
       });
       
       // Convertir a array y ordenar por ventas
+      // Incluir TODOS los productos únicos, no solo los top 10
       const productosUnicos = Object.values(productosAgrupados)
-        .sort((a, b) => b.ventas - a.ventas)
-        .slice(0, 10); // Top 10 productos únicos del cluster
+        .sort((a, b) => b.ventas - a.ventas);
       
       clusterCharacteristics.push({
         cluster: i,
@@ -516,7 +516,7 @@ export async function calculateProductClusters(productosData, k = 4) {
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
         promedioRotacion: mean(clusterItems.map(item => item.rotacion_inventario)),
-        productos: productosUnicos
+        productos: productosUnicos // Todos los productos, ordenados por ventas
       });
     }
   }
@@ -669,6 +669,13 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
   for (let i = 0; i < k; i++) {
     const clusterItems = clusteredSucursales.filter(item => item.cluster === i);
     if (clusterItems.length > 0) {
+      // Incluir TODAS las sucursales, no solo las top 10
+      const todasSucursales = clusterItems.map(item => ({
+        nombre: item.nombre_sucursal,
+        canal: item.canal,
+        ventas: item.ventas_totales_sucursal
+      })).sort((a, b) => b.ventas - a.ventas);
+      
       clusterCharacteristics.push({
         cluster: i,
         cantidad: clusterItems.length,
@@ -676,11 +683,7 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio_sucursal)),
         promedioRotacion: mean(clusterItems.map(item => item.rotacion_sucursal)),
         promedioDiversidad: mean(clusterItems.map(item => item.diversidad_productos)),
-        sucursales: clusterItems.map(item => ({
-          nombre: item.nombre_sucursal,
-          canal: item.canal,
-          ventas: item.ventas_totales_sucursal
-        })).sort((a, b) => b.ventas - a.ventas).slice(0, 10) // Top 10 sucursales del cluster
+        sucursales: todasSucursales // Todas las sucursales, ordenadas por ventas
       });
     }
   }
@@ -693,6 +696,7 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     );
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
+    // Usar todas las sucursales del cluster, no solo las mostradas
     const sortedSucursales = [...largestCluster.sucursales].sort((a, b) => b.ventas - a.ventas);
     const midPoint = Math.floor(sortedSucursales.length / 2);
     

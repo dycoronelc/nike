@@ -266,12 +266,15 @@ export default function Dashboard() {
                     </div>
                     {cluster.productos && cluster.productos.length > 0 && (
                       <div className="cluster-top-items">
-                        <strong>Top Productos:</strong>
+                        <strong>Top Productos ({cluster.productos.length > 5 ? `mostrando 5 de ${cluster.productos.length}` : cluster.productos.length}):</strong>
                         <ul>
                           {cluster.productos.slice(0, 5).map((producto: any, idx: number) => (
                             <li key={idx}>{producto.silueta} - ${producto.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
                           ))}
                         </ul>
+                        {cluster.productos.length > 5 && (
+                          <p className="more-items">+ {cluster.productos.length - 5} productos más en este cluster</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -326,12 +329,15 @@ export default function Dashboard() {
                   </div>
                   {cluster.sucursales && cluster.sucursales.length > 0 && (
                     <div className="cluster-top-items">
-                      <strong>Top Sucursales:</strong>
+                      <strong>Top Sucursales ({cluster.sucursales.length > 5 ? `mostrando 5 de ${cluster.sucursales.length}` : cluster.sucursales.length}):</strong>
                       <ul>
                         {cluster.sucursales.slice(0, 5).map((sucursal: any, idx: number) => (
                           <li key={idx}>{sucursal.nombre} ({sucursal.canal}) - ${sucursal.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
                         ))}
                       </ul>
+                      {cluster.sucursales.length > 5 && (
+                        <p className="more-items">+ {cluster.sucursales.length - 5} sucursales más en este cluster</p>
+                      )}
                     </div>
                   )}
                 </div>
