@@ -524,10 +524,13 @@ export async function calculateProductClusters(productosData, k = 4) {
   // Si hay menos de 4 clusters, dividir el cluster más grande
   const targetK = 4; // Siempre queremos 4 clusters
   while (clusterCharacteristics.length < targetK && clusterCharacteristics.length > 0) {
-    // Encontrar el cluster más grande
+    // Encontrar el cluster más grande (por cantidad total, no por productos mostrados)
     const largestCluster = clusterCharacteristics.reduce((max, cluster) => 
       cluster.cantidad > max.cantidad ? cluster : max
     );
+    
+    // Guardar la cantidad total original antes de dividir
+    const cantidadOriginal = largestCluster.cantidad;
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
     const sortedProductos = [...largestCluster.productos].sort((a, b) => b.ventas - a.ventas);
@@ -537,9 +540,14 @@ export async function calculateProductClusters(productosData, k = 4) {
     const bottomHalf = sortedProductos.slice(midPoint);
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
+      // Calcular proporciones para mantener la cantidad total correcta
+      const totalProductos = topHalf.length + bottomHalf.length;
+      const proporcionTop = topHalf.length / totalProductos;
+      const proporcionBottom = bottomHalf.length / totalProductos;
+      
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(p => p.ventas));
-      largestCluster.cantidad = topHalf.length;
+      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
       largestCluster.promedioVentas = topVentas;
       largestCluster.productos = topHalf;
       
@@ -547,7 +555,7 @@ export async function calculateProductClusters(productosData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(p => p.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: bottomHalf.length,
+        cantidad: Math.round(cantidadOriginal * proporcionBottom),
         promedioVentas: bottomVentas,
         promedioUnidades: largestCluster.promedioUnidades,
         promedioTicket: largestCluster.promedioTicket,
@@ -690,10 +698,13 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
   
   // Si hay menos de 4 clusters, dividir el cluster más grande
   while (clusterCharacteristics.length < targetK && clusterCharacteristics.length > 0) {
-    // Encontrar el cluster más grande
+    // Encontrar el cluster más grande (por cantidad total, no por sucursales mostradas)
     const largestCluster = clusterCharacteristics.reduce((max, cluster) => 
       cluster.cantidad > max.cantidad ? cluster : max
     );
+    
+    // Guardar la cantidad total original antes de dividir
+    const cantidadOriginal = largestCluster.cantidad;
     
     // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
     // Usar todas las sucursales del cluster, no solo las mostradas
@@ -704,9 +715,14 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     const bottomHalf = sortedSucursales.slice(midPoint);
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
+      // Calcular proporciones para mantener la cantidad total correcta
+      const totalSucursales = topHalf.length + bottomHalf.length;
+      const proporcionTop = topHalf.length / totalSucursales;
+      const proporcionBottom = bottomHalf.length / totalSucursales;
+      
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(s => s.ventas));
-      largestCluster.cantidad = topHalf.length;
+      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
       largestCluster.promedioVentas = topVentas;
       largestCluster.sucursales = topHalf;
       
@@ -714,7 +730,7 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(s => s.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: bottomHalf.length,
+        cantidad: Math.round(cantidadOriginal * proporcionBottom),
         promedioVentas: bottomVentas,
         promedioTicket: largestCluster.promedioTicket,
         promedioRotacion: largestCluster.promedioRotacion,

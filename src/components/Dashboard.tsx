@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { KPICard, TimeSeriesChart, PredictionChart, InfoModal, InventoryOptimization, ScatterPlotChart } from './'
+import ClusterCard from './ClusterCard'
 import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchProductClusters, fetchSucursalClusters, fetchScatterData } from '../api'
 import { useFilters } from '../contexts/FilterContext'
 import { indicatorsInfo } from '../data/indicatorsInfo'
@@ -42,6 +43,10 @@ export default function Dashboard() {
       title = 'Índice de Cobertura de Inventario'
     } else if (key === 'scatterChart') {
       title = 'Gráfico de Dispersión: Sell In vs Sell Out'
+    } else if (key === 'clusterProductos') {
+      title = 'Análisis de Clustering - Perfil de Productos'
+    } else if (key === 'clusterSucursales') {
+      title = 'Análisis de Clustering - Perfil de Sucursales'
     } else {
       // Para KPIs, crear título descriptivo
       const parts = key.split('-')
@@ -250,42 +255,18 @@ export default function Dashboard() {
               <p className="cluster-description">
                 Se identificaron <strong>{productClusters.caracteristicas?.length || 0} perfiles distintos</strong> de productos
               </p>
-              <div className="clusters-grid">
+              <div className="clusters-grid-compact">
                 {productClusters.caracteristicas?.map((cluster: any) => (
-                  <div key={cluster.cluster} className="cluster-card">
-                    <h4>{cluster.nombre}</h4>
-                    <div className="cluster-stats">
-                      <div className="stat">
-                        <span className="stat-label">Productos:</span>
-                        <span className="stat-value">{cluster.cantidad}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Ventas Promedio:</span>
-                        <span className="stat-value">${cluster.promedioVentas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Ticket Promedio:</span>
-                        <span className="stat-value">${cluster.promedioTicket?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Rotación:</span>
-                        <span className="stat-value">{cluster.promedioRotacion?.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    {cluster.productos && cluster.productos.length > 0 && (
-                      <div className="cluster-top-items">
-                        <strong>Top Productos ({cluster.productos.length > 5 ? `mostrando 5 de ${cluster.productos.length}` : cluster.productos.length}):</strong>
-                        <ul>
-                          {cluster.productos.slice(0, 5).map((producto: any, idx: number) => (
-                            <li key={idx}>{producto.silueta} - ${producto.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
-                          ))}
-                        </ul>
-                        {cluster.productos.length > 5 && (
-                          <p className="more-items">+ {cluster.productos.length - 5} más</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <ClusterCard
+                    key={cluster.cluster}
+                    nombre={cluster.nombre}
+                    cantidad={cluster.cantidad}
+                    promedioVentas={cluster.promedioVentas}
+                    promedioTicket={cluster.promedioTicket}
+                    promedioRotacion={cluster.promedioRotacion}
+                    productos={cluster.productos}
+                    onInfoClick={() => handleInfoClick('clusterProductos')}
+                  />
                 ))}
               </div>
             </div>
@@ -323,46 +304,19 @@ export default function Dashboard() {
             <p className="cluster-description">
               Se identificaron <strong>{sucursalClusters.caracteristicas?.length || 0} perfiles distintos</strong> de sucursales
             </p>
-            <div className="clusters-grid">
+            <div className="clusters-grid-compact">
               {sucursalClusters.caracteristicas?.map((cluster: any) => (
-                <div key={cluster.cluster} className="cluster-card">
-                  <h4>{cluster.nombre}</h4>
-                  <div className="cluster-stats">
-                    <div className="stat">
-                      <span className="stat-label">Sucursales:</span>
-                      <span className="stat-value">{cluster.cantidad}</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Ventas Promedio:</span>
-                      <span className="stat-value">${cluster.promedioVentas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Ticket Promedio:</span>
-                      <span className="stat-value">${cluster.promedioTicket?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Diversidad:</span>
-                      <span className="stat-value">{cluster.promedioDiversidad?.toFixed(0)} productos</span>
-                    </div>
-                    <div className="stat">
-                      <span className="stat-label">Rotación:</span>
-                      <span className="stat-value">{cluster.promedioRotacion?.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  {cluster.sucursales && cluster.sucursales.length > 0 && (
-                    <div className="cluster-top-items">
-                      <strong>Top Sucursales ({cluster.sucursales.length > 5 ? `mostrando 5 de ${cluster.sucursales.length}` : cluster.sucursales.length}):</strong>
-                      <ul>
-                        {cluster.sucursales.slice(0, 5).map((sucursal: any, idx: number) => (
-                          <li key={idx}>{sucursal.nombre} ({sucursal.canal}) - ${sucursal.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
-                        ))}
-                      </ul>
-                      {cluster.sucursales.length > 5 && (
-                        <p className="more-items">+ {cluster.sucursales.length - 5} más</p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <ClusterCard
+                  key={cluster.cluster}
+                  nombre={cluster.nombre}
+                  cantidad={cluster.cantidad}
+                  promedioVentas={cluster.promedioVentas}
+                  promedioTicket={cluster.promedioTicket}
+                  promedioRotacion={cluster.promedioRotacion}
+                  promedioDiversidad={cluster.promedioDiversidad}
+                  sucursales={cluster.sucursales}
+                  onInfoClick={() => handleInfoClick('clusterSucursales')}
+                />
               ))}
             </div>
           </div>

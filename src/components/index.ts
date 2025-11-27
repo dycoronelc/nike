@@ -11,4 +11,5 @@ export { default as Filters } from './Filters'
 export { default as InfoModal } from './InfoModal'
 export { default as InventoryOptimization } from './InventoryOptimization'
 export { default as ScatterPlotChart } from './ScatterPlotChart'
+export { default as ClusterCard } from './ClusterCard'
 

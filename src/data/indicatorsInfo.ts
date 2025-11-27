@@ -84,6 +84,16 @@ export const indicatorsInfo: Record<string, IndicatorInfo> = {
     description: 'Gráfico de dispersión que muestra la relación entre ventas Sell In (a distribuidores) y ventas Sell Out (de distribuidores a usuarios finales) por sucursal.',
     meaning: 'Este gráfico permite visualizar el balance entre lo que vendes a tus distribuidores y lo que ellos venden a los consumidores finales. Los puntos se colorean según el ratio Sell Out/Sell In: Verde (≥100%): Excelente - distribuidores venden más de lo comprado, Azul (80-100%): Buen balance, Amarillo (50-80%): Balance medio, Rojo (<50%): Atención - stock acumulado. Los puntos arriba de la línea diagonal indican que los distribuidores venden más de lo comprado (usan stock previo), en la diagonal hay balance ideal, y abajo hay stock acumulado.',
     calculation: 'Para cada sucursal se calcula: Ventas Sell In = SUM(ventas) de tabla sell_in agrupado por nombre_sucursal. Ventas Sell Out = SUM(ventas) de tabla sell_out agrupado por nombre_sucursal. Ratio = (Ventas Sell Out / Ventas Sell In) × 100. Cada punto representa una sucursal, posicionada según sus ventas Sell In (eje X) y Sell Out (eje Y).'
+  },
+  'clusterProductos': {
+    description: 'Análisis de clustering de productos que agrupa productos similares según sus características de ventas, unidades, ticket promedio, frecuencia, ratio sell-out/sell-in y rotación de inventario.',
+    meaning: 'Los productos se agrupan en 4 perfiles distintos usando el algoritmo K-means: Productos Estrella (alta venta y rotación), Productos Premium (alto ticket, baja rotación), Productos Masivos (alto volumen, bajo ticket), y Productos Estables (rendimiento medio). Cada cluster muestra el total de productos que pertenecen a ese perfil, no solo los mostrados en la lista.',
+    calculation: 'Se usan 8 características normalizadas: ventas totales, unidades totales, ticket promedio, frecuencia de ventas, ratio sell-out/sell-in, rotación de inventario, sucursales distintas, y meses activos. El algoritmo K-means agrupa productos similares. La cantidad mostrada es el total real de productos en cada cluster, calculado antes de cualquier división para llegar a 4 clusters.'
+  },
+  'clusterSucursales': {
+    description: 'Análisis de clustering de sucursales que agrupa sucursales similares según sus características de ventas, unidades, ticket promedio, diversidad de productos, rotación y estacionalidad.',
+    meaning: 'Las sucursales se agrupan en 4 perfiles distintos usando el algoritmo K-means: Sucursales Premium (alto rendimiento), Sucursales Masivas (alto volumen), Sucursales Estables (rendimiento medio), y Sucursales Oportunidad (potencial de mejora). Cada cluster muestra el total de sucursales que pertenecen a ese perfil, no solo las mostradas en la lista.',
+    calculation: 'Se usan 7 características normalizadas: ventas totales, unidades totales, ticket promedio, diversidad de productos, rotación, estacionalidad (desviación estándar de ventas mensuales), y ratio sell-out/sell-in. El algoritmo K-means agrupa sucursales similares. La cantidad mostrada es el total real de sucursales en cada cluster, calculado antes de cualquier división para llegar a 4 clusters.'
   }
 }
 
