@@ -509,9 +509,12 @@ export async function calculateProductClusters(productosData, k = 4) {
       const productosUnicos = Object.values(productosAgrupados)
         .sort((a, b) => b.ventas - a.ventas);
       
+      // La cantidad debe ser el número de productos únicos (siluetas), no el número de registros
+      const cantidadProductosUnicos = productosUnicos.length;
+      
       clusterCharacteristics.push({
         cluster: i,
-        cantidad: clusterItems.length,
+        cantidad: cantidadProductosUnicos, // Usar cantidad de productos únicos
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales)),
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
@@ -541,13 +544,13 @@ export async function calculateProductClusters(productosData, k = 4) {
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
       // Calcular proporciones para mantener la cantidad total correcta
-      const totalProductos = topHalf.length + bottomHalf.length;
-      const proporcionTop = topHalf.length / totalProductos;
-      const proporcionBottom = bottomHalf.length / totalProductos;
+      // Usar la cantidad real de productos únicos, no proporciones
+      const cantidadTop = topHalf.length;
+      const cantidadBottom = bottomHalf.length;
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(p => p.ventas));
-      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
+      largestCluster.cantidad = cantidadTop; // Cantidad real de productos únicos
       largestCluster.promedioVentas = topVentas;
       largestCluster.productos = topHalf;
       
@@ -555,7 +558,7 @@ export async function calculateProductClusters(productosData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(p => p.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: Math.round(cantidadOriginal * proporcionBottom),
+        cantidad: cantidadBottom, // Cantidad real de productos únicos
         promedioVentas: bottomVentas,
         promedioUnidades: largestCluster.promedioUnidades,
         promedioTicket: largestCluster.promedioTicket,
@@ -715,14 +718,13 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     const bottomHalf = sortedSucursales.slice(midPoint);
     
     if (topHalf.length > 0 && bottomHalf.length > 0) {
-      // Calcular proporciones para mantener la cantidad total correcta
-      const totalSucursales = topHalf.length + bottomHalf.length;
-      const proporcionTop = topHalf.length / totalSucursales;
-      const proporcionBottom = bottomHalf.length / totalSucursales;
+      // Usar la cantidad real de sucursales, no proporciones
+      const cantidadTop = topHalf.length;
+      const cantidadBottom = bottomHalf.length;
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(s => s.ventas));
-      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
+      largestCluster.cantidad = cantidadTop; // Cantidad real de sucursales
       largestCluster.promedioVentas = topVentas;
       largestCluster.sucursales = topHalf;
       
@@ -730,7 +732,7 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
       const bottomVentas = mean(bottomHalf.map(s => s.ventas));
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: Math.round(cantidadOriginal * proporcionBottom),
+        cantidad: cantidadBottom, // Cantidad real de sucursales
         promedioVentas: bottomVentas,
         promedioTicket: largestCluster.promedioTicket,
         promedioRotacion: largestCluster.promedioRotacion,
@@ -753,12 +755,6 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
   return {
     clusters: clusteredSucursales,
     caracteristicas: clusterCharacteristics.slice(0, targetK),
-    centroides: clusters.centroids
-  };
-
-  return {
-    clusters: clusteredSucursales,
-    caracteristicas: clusterCharacteristics,
     centroides: clusters.centroids
   };
 }

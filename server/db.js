@@ -1097,10 +1097,11 @@ export async function getInventoryOptimizationMetrics() {
 export async function getScatterDataSellInVsSellOut() {
   try {
     // MySQL no soporta FULL OUTER JOIN, usar UNION en su lugar
+    // Nota: sell_in puede no tener campo 'canal', usar COALESCE para manejar NULLs
     const [scatterDataFixed] = await pool.query(`
       SELECT 
         nombre_sucursal,
-        canal,
+        COALESCE(canal, 'Sin canal') as canal,
         SUM(ventas_sell_in) as ventas_sell_in,
         SUM(ventas_sell_out) as ventas_sell_out,
         SUM(unidades_sell_in) as unidades_sell_in,
@@ -1110,7 +1111,7 @@ export async function getScatterDataSellInVsSellOut() {
       FROM (
         SELECT 
           nombre_sucursal,
-          canal,
+          COALESCE(canal, 'Sin canal') as canal,
           SUM(ventas) as ventas_sell_in,
           0 as ventas_sell_out,
           SUM(unidades) as unidades_sell_in,
@@ -1125,7 +1126,7 @@ export async function getScatterDataSellInVsSellOut() {
         
         SELECT 
           nombre_sucursal,
-          canal,
+          COALESCE(canal, 'Sin canal') as canal,
           0 as ventas_sell_in,
           SUM(ventas) as ventas_sell_out,
           0 as unidades_sell_in,
