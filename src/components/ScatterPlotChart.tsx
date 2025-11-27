@@ -139,16 +139,10 @@ export default function ScatterPlotChart({ data, onInfoClick }: ScatterPlotChart
           />
           <Tooltip content={<CustomTooltip />} />
           <ReferenceLine 
-            y={maxValue} 
-            stroke="#666" 
-            strokeDasharray="5 5" 
-            label={{ value: 'Línea de balance (Sell Out = Sell In)', position: 'topRight' }}
-          />
-          <ReferenceLine 
             segment={[{ x: 0, y: 0 }, { x: maxValue, y: maxValue }]}
             stroke="#666" 
             strokeDasharray="5 5"
-            label={{ value: 'Balance ideal', position: 'topRight' }}
+            label={{ value: 'Balance ideal (Sell Out = Sell In)', position: 'top' }}
           />
           <Scatter name="Sucursales" data={chartData} fill="#8884d8">
             {chartData.map((entry, index) => (

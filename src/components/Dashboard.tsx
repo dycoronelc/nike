@@ -281,7 +281,7 @@ export default function Dashboard() {
                           ))}
                         </ul>
                         {cluster.productos.length > 5 && (
-                          <p className="more-items">+ {cluster.productos.length - 5} productos más en este cluster</p>
+                          <p className="more-items">+ {cluster.productos.length - 5} más</p>
                         )}
                       </div>
                     )}
@@ -358,7 +358,7 @@ export default function Dashboard() {
                         ))}
                       </ul>
                       {cluster.sucursales.length > 5 && (
-                        <p className="more-items">+ {cluster.sucursales.length - 5} sucursales más en este cluster</p>
+                        <p className="more-items">+ {cluster.sucursales.length - 5} más</p>
                       )}
                     </div>
                   )}
