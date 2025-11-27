@@ -443,16 +443,55 @@ export async function calculateProductClusters(productosData, k = 4) {
     }
   }
   
+  // Si hay menos de 4 clusters, dividir el cluster más grande
+  const targetK = 4; // Siempre queremos 4 clusters
+  while (clusterCharacteristics.length < targetK && clusterCharacteristics.length > 0) {
+    // Encontrar el cluster más grande
+    const largestCluster = clusterCharacteristics.reduce((max, cluster) => 
+      cluster.cantidad > max.cantidad ? cluster : max
+    );
+    
+    // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
+    const sortedProductos = [...largestCluster.productos].sort((a, b) => b.ventas - a.ventas);
+    const midPoint = Math.floor(sortedProductos.length / 2);
+    
+    const topHalf = sortedProductos.slice(0, midPoint);
+    const bottomHalf = sortedProductos.slice(midPoint);
+    
+    if (topHalf.length > 0 && bottomHalf.length > 0) {
+      // Reemplazar el cluster original con la mitad superior
+      const topVentas = mean(topHalf.map(p => p.ventas));
+      largestCluster.cantidad = topHalf.length;
+      largestCluster.promedioVentas = topVentas;
+      largestCluster.productos = topHalf;
+      
+      // Agregar la mitad inferior como nuevo cluster
+      const bottomVentas = mean(bottomHalf.map(p => p.ventas));
+      clusterCharacteristics.push({
+        cluster: clusterCharacteristics.length,
+        cantidad: bottomHalf.length,
+        promedioVentas: bottomVentas,
+        promedioUnidades: largestCluster.promedioUnidades,
+        promedioTicket: largestCluster.promedioTicket,
+        promedioRotacion: largestCluster.promedioRotacion,
+        productos: bottomHalf
+      });
+    } else {
+      break; // No se puede dividir más
+    }
+  }
+  
   // Ordenar clusters por ventas promedio (de mayor a menor) y asignar nombres únicos
   clusterCharacteristics.sort((a, b) => b.promedioVentas - a.promedioVentas);
   const productClusterNames = ['Productos Estrella', 'Productos Premium', 'Productos Masivos', 'Productos Estables'];
-  clusterCharacteristics.forEach((cluster, index) => {
+  clusterCharacteristics.slice(0, targetK).forEach((cluster, index) => {
     cluster.nombre = productClusterNames[index] || `Productos Cluster ${index + 1}`;
   });
 
+  // Asegurar que siempre retornemos exactamente 4 clusters
   return {
     clusters: clusteredProducts,
-    caracteristicas: clusterCharacteristics,
+    caracteristicas: clusterCharacteristics.slice(0, targetK),
     centroides: clusters.centroids
   };
 }
@@ -546,6 +585,9 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
 
   // Características de cada cluster
   const clusterCharacteristics = [];
+  const targetK = 4; // Siempre queremos 4 clusters
+  
+  // Primero, recopilar todos los clusters generados
   for (let i = 0; i < k; i++) {
     const clusterItems = clusteredSucursales.filter(item => item.cluster === i);
     if (clusterItems.length > 0) {
@@ -565,12 +607,56 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     }
   }
   
+  // Si hay menos de 4 clusters, dividir el cluster más grande
+  while (clusterCharacteristics.length < targetK && clusterCharacteristics.length > 0) {
+    // Encontrar el cluster más grande
+    const largestCluster = clusterCharacteristics.reduce((max, cluster) => 
+      cluster.cantidad > max.cantidad ? cluster : max
+    );
+    
+    // Dividir a la mitad (tomar la mitad superior y la mitad inferior por ventas)
+    const sortedSucursales = [...largestCluster.sucursales].sort((a, b) => b.ventas - a.ventas);
+    const midPoint = Math.floor(sortedSucursales.length / 2);
+    
+    const topHalf = sortedSucursales.slice(0, midPoint);
+    const bottomHalf = sortedSucursales.slice(midPoint);
+    
+    if (topHalf.length > 0 && bottomHalf.length > 0) {
+      // Reemplazar el cluster original con la mitad superior
+      const topVentas = mean(topHalf.map(s => s.ventas));
+      largestCluster.cantidad = topHalf.length;
+      largestCluster.promedioVentas = topVentas;
+      largestCluster.sucursales = topHalf;
+      
+      // Agregar la mitad inferior como nuevo cluster
+      const bottomVentas = mean(bottomHalf.map(s => s.ventas));
+      clusterCharacteristics.push({
+        cluster: clusterCharacteristics.length,
+        cantidad: bottomHalf.length,
+        promedioVentas: bottomVentas,
+        promedioTicket: largestCluster.promedioTicket,
+        promedioRotacion: largestCluster.promedioRotacion,
+        promedioDiversidad: largestCluster.promedioDiversidad,
+        sucursales: bottomHalf
+      });
+    } else {
+      break; // No se puede dividir más
+    }
+  }
+  
   // Ordenar clusters por ventas promedio (de mayor a menor) y asignar nombres únicos
   clusterCharacteristics.sort((a, b) => b.promedioVentas - a.promedioVentas);
   const sucursalClusterNames = ['Sucursales Premium', 'Sucursales Masivas', 'Sucursales Estables', 'Sucursales Oportunidad'];
-  clusterCharacteristics.forEach((cluster, index) => {
+  clusterCharacteristics.slice(0, targetK).forEach((cluster, index) => {
     cluster.nombre = sucursalClusterNames[index] || `Sucursales Cluster ${index + 1}`;
   });
+  
+  // Asegurar que siempre retornemos exactamente 4 clusters
+  return {
+    clusters: clusteredSucursales,
+    caracteristicas: clusterCharacteristics.slice(0, targetK),
+    centroides: clusters.centroids
+  };
 
   return {
     clusters: clusteredSucursales,
