@@ -16,14 +16,14 @@ export const indicatorsInfo: Record<string, IndicatorInfo> = {
     calculation: 'Suma de todos los valores de ventas (campo "ventas") en la tabla sell_out, agrupando por el período seleccionado. Fórmula: SUM(ventas) WHERE fecha BETWEEN fechaDesde AND fechaHasta'
   },
   'inventario-totalExistencia': {
-    description: 'Cantidad total de unidades disponibles en inventario en todas las sucursales.',
-    meaning: 'Representa el stock total de productos disponibles en el momento de la medición. Este valor ayuda a entender la capacidad de abastecimiento y planificar compras.',
-    calculation: 'Suma de todas las existencias (campo "existencia") en la tabla inventario. Fórmula: SUM(existencia)'
+    description: 'Cantidad total de unidades disponibles en inventario en todas las sucursales del último mes disponible en los datos.',
+    meaning: 'Representa el stock total de productos disponibles en el último mes registrado. Este valor ayuda a entender la capacidad de abastecimiento actual y planificar compras. Solo muestra las existencias del mes más reciente disponible en la base de datos.',
+    calculation: 'Suma de todas las existencias (campo "existencia") en la tabla inventario para el último mes disponible. Fórmula: SUM(existencia) WHERE (año, mes) = último mes disponible'
   },
   'general-ratioSellOutSellIn': {
     description: 'Proporción entre las ventas Sell Out y Sell In, expresada como porcentaje.',
-    meaning: 'Indica qué porcentaje de las ventas a distribuidores (Sell In) fueron efectivamente vendidas a consumidores finales (Sell Out). Un ratio alto indica buena rotación de inventario en los distribuidores.',
-    calculation: 'División de ventas Sell Out entre ventas Sell In, multiplicado por 100. Fórmula: (SUM(sell_out.ventas) / SUM(sell_in.ventas)) × 100'
+    meaning: 'Indica la relación entre las ventas de distribuidores a consumidores finales (Sell Out) versus las ventas que tú realizaste a distribuidores (Sell In). Un ratio del 100% significa que los distribuidores vendieron exactamente lo que compraron. Un ratio mayor al 100% (ej: 220.67%) indica que los distribuidores vendieron MÁS de lo que compraron en el período, lo cual es posible si: 1) Los distribuidores tenían inventario previo de períodos anteriores, 2) Hay desalineación temporal en los datos, o 3) Los distribuidores están liquidando stock acumulado. Un ratio menor al 100% indica que los distribuidores aún tienen inventario sin vender.',
+    calculation: 'División de ventas Sell Out entre ventas Sell In, multiplicado por 100. Fórmula: (SUM(sell_out.ventas) / SUM(sell_in.ventas)) × 100. Si el resultado es > 100%, significa que el Sell Out superó al Sell In en ese período.'
   },
   'sellIn-promedioTicket': {
     description: 'Valor promedio por transacción en las ventas Sell In.',

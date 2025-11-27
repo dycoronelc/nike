@@ -108,7 +108,7 @@ export async function getKPIs() {
       WHERE ventas IS NOT NULL AND cantidad IS NOT NULL
     `);
 
-    // KPIs Inventario
+    // KPIs Inventario - Solo del último mes disponible
     const [inventarioStats] = await pool.query(`
       SELECT 
         SUM(existencia) as totalExistencia,
@@ -116,6 +116,13 @@ export async function getKPIs() {
         COUNT(*) as registros
       FROM inventario
       WHERE existencia IS NOT NULL
+        AND (año, mes) = (
+          SELECT año, mes
+          FROM inventario
+          WHERE existencia IS NOT NULL
+          ORDER BY año DESC, mes DESC
+          LIMIT 1
+        )
     `);
 
     // Productos únicos
