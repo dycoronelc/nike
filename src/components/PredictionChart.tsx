@@ -35,10 +35,19 @@ interface PredictionChartProps {
 }
 
 export default function PredictionChart({ data, onInfoClick }: PredictionChartProps) {
-  // Calcular diferencia del rango histórico para el área
-  const rangoDiff = data.rangoHistorico 
-    ? data.rangoHistorico.rangoSuperior - data.rangoHistorico.rangoInferior 
-    : 0;
+  // Calcular valores del rango histórico
+  const rangoInferior = data.rangoHistorico?.rangoInferior || 0;
+  const rangoSuperior = data.rangoHistorico?.rangoSuperior || 0;
+  const rangoDiff = rangoSuperior - rangoInferior;
+  
+  // Debug: verificar que los datos del rango histórico estén presentes
+  if (data.rangoHistorico) {
+    console.log('Rango Histórico:', {
+      inferior: rangoInferior,
+      superior: rangoSuperior,
+      diferencia: rangoDiff
+    });
+  }
 
   // Preparar datos históricos para el gráfico
   const historicalChartData = data.historicos?.map(h => ({
@@ -48,8 +57,9 @@ export default function PredictionChart({ data, onInfoClick }: PredictionChartPr
     'Predicción': null,
     'Intervalo Superior': null,
     'Intervalo Inferior': null,
-    'Rango Inferior': data.rangoHistorico?.rangoInferior || null,
-    'Rango Area': rangoDiff, // Diferencia para mostrar como área
+    'Rango Inferior': rangoInferior,
+    'Rango Superior': rangoSuperior,
+    'Rango Area': rangoDiff, // Diferencia para mostrar como área apilada
     tipo: 'historico'
   })) || [];
 
@@ -65,8 +75,9 @@ export default function PredictionChart({ data, onInfoClick }: PredictionChartPr
       'Intervalo Superior': p.intervaloSuperior,
       'Intervalo Inferior': p.intervaloInferior,
       'Confianza Area': confianzaDiff, // Diferencia para mostrar como área
-      'Rango Inferior': data.rangoHistorico?.rangoInferior || null,
-      'Rango Area': rangoDiff, // Diferencia para mostrar como área
+      'Rango Inferior': rangoInferior,
+      'Rango Superior': rangoSuperior,
+      'Rango Area': rangoDiff, // Diferencia para mostrar como área apilada
       tipo: 'prediccion'
     };
   });
@@ -137,6 +148,64 @@ export default function PredictionChart({ data, onInfoClick }: PredictionChartPr
             />
             <Legend />
             
+            {/* Banda de rango histórico (máximos y mínimos) - PRIMERO para que quede detrás */}
+            {data.rangoHistorico && rangoDiff > 0 && (
+              <>
+                {/* Área base hasta el rango inferior (invisible, solo para el stack) */}
+                <Area
+                  type="monotone"
+                  dataKey="Rango Inferior"
+                  stroke="none"
+                  fill="transparent"
+                  fillOpacity={0}
+                  connectNulls
+                  stackId="rango"
+                  name=""
+                  legendType="none"
+                />
+                {/* Área del rango histórico (diferencia entre superior e inferior) */}
+                <Area
+                  type="monotone"
+                  dataKey="Rango Area"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  strokeOpacity={0.7}
+                  fill="#8b5cf6"
+                  fillOpacity={0.3}
+                  connectNulls
+                  stackId="rango"
+                  name="Rango Histórico (Máx-Mín)"
+                />
+              </>
+            )}
+            
+            {/* Intervalo de confianza solo para predicciones - usando áreas apiladas */}
+            {/* Primero el área hasta el intervalo inferior (invisible, solo para el stack) */}
+            <Area
+              type="monotone"
+              dataKey="Intervalo Inferior"
+              stroke="none"
+              fill="#1a1a1a"
+              fillOpacity={1}
+              connectNulls
+              stackId="confidence"
+              name=""
+              legendType="none"
+            />
+            {/* Luego el área de la diferencia entre superior e inferior */}
+            <Area
+              type="monotone"
+              dataKey="Confianza Area"
+              stroke="#ef4444"
+              strokeWidth={1}
+              strokeOpacity={0.3}
+              fill="#ef4444"
+              fillOpacity={0.15}
+              connectNulls
+              stackId="confidence"
+              name="Intervalo de Confianza (95%)"
+            />
+            
             {/* Línea de ventas reales históricas */}
             {data.historicos && data.historicos.length > 0 && (
               <Line
@@ -171,64 +240,6 @@ export default function PredictionChart({ data, onInfoClick }: PredictionChartPr
               dot={{ fill: '#f59e0b', r: 6 }}
               name="Predicción Futura"
               connectNulls={true}
-            />
-            
-            {/* Banda de rango histórico (máximos y mínimos) */}
-            {data.rangoHistorico && (
-              <>
-                {/* Área base hasta el rango inferior (invisible) */}
-                <Area
-                  type="monotone"
-                  dataKey="Rango Inferior"
-                  stroke="none"
-                  fill="#1a1a1a"
-                  fillOpacity={1}
-                  connectNulls
-                  stackId="rango"
-                  name=""
-                  legendType="none"
-                />
-                {/* Área del rango histórico (diferencia entre superior e inferior) */}
-                <Area
-                  type="monotone"
-                  dataKey="Rango Area"
-                  stroke="#8b5cf6"
-                  strokeWidth={1}
-                  strokeOpacity={0.4}
-                  fill="#8b5cf6"
-                  fillOpacity={0.1}
-                  connectNulls
-                  stackId="rango"
-                  name="Rango Histórico (95% datos)"
-                />
-              </>
-            )}
-            
-            {/* Intervalo de confianza solo para predicciones - usando áreas apiladas */}
-            {/* Primero el área hasta el intervalo inferior (invisible, solo para el stack) */}
-            <Area
-              type="monotone"
-              dataKey="Intervalo Inferior"
-              stroke="none"
-              fill="#1a1a1a"
-              fillOpacity={1}
-              connectNulls
-              stackId="confidence"
-              name=""
-              legendType="none"
-            />
-            {/* Luego el área de la diferencia entre superior e inferior */}
-            <Area
-              type="monotone"
-              dataKey="Confianza Area"
-              stroke="#ef4444"
-              strokeWidth={1}
-              strokeOpacity={0.3}
-              fill="#ef4444"
-              fillOpacity={0.15}
-              connectNulls
-              stackId="confidence"
-              name="Intervalo de Confianza (95%)"
             />
           </ComposedChart>
         </ResponsiveContainer>
