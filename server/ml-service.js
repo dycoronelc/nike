@@ -429,7 +429,6 @@ export async function calculateProductClusters(productosData, k = 4) {
     if (clusterItems.length > 0) {
       clusterCharacteristics.push({
         cluster: i,
-        nombre: getProductClusterName(i, clusterItems),
         cantidad: clusterItems.length,
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales)),
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
@@ -443,6 +442,13 @@ export async function calculateProductClusters(productosData, k = 4) {
       });
     }
   }
+  
+  // Ordenar clusters por ventas promedio (de mayor a menor) y asignar nombres únicos
+  clusterCharacteristics.sort((a, b) => b.promedioVentas - a.promedioVentas);
+  const productClusterNames = ['Productos Estrella', 'Productos Premium', 'Productos Masivos', 'Productos Estables'];
+  clusterCharacteristics.forEach((cluster, index) => {
+    cluster.nombre = productClusterNames[index] || `Productos Cluster ${index + 1}`;
+  });
 
   return {
     clusters: clusteredProducts,
@@ -545,7 +551,6 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
     if (clusterItems.length > 0) {
       clusterCharacteristics.push({
         cluster: i,
-        nombre: getSucursalClusterName(i, clusterItems),
         cantidad: clusterItems.length,
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales_sucursal)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio_sucursal)),
@@ -559,6 +564,13 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
       });
     }
   }
+  
+  // Ordenar clusters por ventas promedio (de mayor a menor) y asignar nombres únicos
+  clusterCharacteristics.sort((a, b) => b.promedioVentas - a.promedioVentas);
+  const sucursalClusterNames = ['Sucursales Premium', 'Sucursales Masivas', 'Sucursales Estables', 'Sucursales Oportunidad'];
+  clusterCharacteristics.forEach((cluster, index) => {
+    cluster.nombre = sucursalClusterNames[index] || `Sucursales Cluster ${index + 1}`;
+  });
 
   return {
     clusters: clusteredSucursales,
