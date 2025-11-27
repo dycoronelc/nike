@@ -1098,6 +1098,7 @@ export async function getScatterDataSellInVsSellOut() {
   try {
     // MySQL no soporta FULL OUTER JOIN, usar UNION en su lugar
     // Nota: sell_in puede no tener campo 'canal', usar COALESCE para manejar NULLs
+    // Compatible con sql_mode=only_full_group_by
     const [scatterDataFixed] = await pool.query(`
       SELECT 
         nombre_sucursal,
@@ -1107,7 +1108,8 @@ export async function getScatterDataSellInVsSellOut() {
         SUM(unidades_sell_in) as unidades_sell_in,
         SUM(unidades_sell_out) as unidades_sell_out,
         SUM(dias_sell_in) as dias_sell_in,
-        SUM(dias_sell_out) as dias_sell_out
+        SUM(dias_sell_out) as dias_sell_out,
+        SUM(ventas_sell_in + ventas_sell_out) as total_ventas
       FROM (
         SELECT 
           nombre_sucursal,
@@ -1138,8 +1140,8 @@ export async function getScatterDataSellInVsSellOut() {
         GROUP BY nombre_sucursal, canal
       ) as combined
       GROUP BY nombre_sucursal, canal
-      HAVING ventas_sell_in > 0 OR ventas_sell_out > 0
-      ORDER BY (ventas_sell_in + ventas_sell_out) DESC
+      HAVING SUM(ventas_sell_in) > 0 OR SUM(ventas_sell_out) > 0
+      ORDER BY total_ventas DESC
     `);
 
     return scatterDataFixed.map(row => ({
