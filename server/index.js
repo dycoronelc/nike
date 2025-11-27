@@ -245,6 +245,20 @@ app.get('/api/clusters/sucursales', async (req, res) => {
   }
 });
 
+// Endpoint para métricas de optimización de inventario
+app.get('/api/inventory-optimization', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const metrics = await db.getInventoryOptimizationMetrics();
+    res.json(metrics);
+  } catch (error) {
+    console.error('Error obteniendo métricas de optimización:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint del chatbot
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;

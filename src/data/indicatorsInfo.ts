@@ -59,6 +59,26 @@ export const indicatorsInfo: Record<string, IndicatorInfo> = {
     description: 'Análisis de clustering que agrupa períodos con características similares de ventas e inventario.',
     meaning: 'Usa el algoritmo K-means para identificar patrones similares entre diferentes períodos. Cada cluster representa un tipo de comportamiento: alto stock, alta demanda, picos de ventas, etc.',
     calculation: 'El algoritmo agrupa los períodos mensuales en 5 clusters basándose en 4 características: ventas Sell In, ventas Sell Out, unidades Sell In y cantidad Sell Out. Se usa normalización de características y distancia euclidiana para agrupar períodos similares.'
+  },
+  'diasInventario': {
+    description: 'Cantidad de días que el inventario actual puede cubrir la demanda esperada, comparando con el mismo período del año anterior.',
+    meaning: 'Indica cuántos días de ventas puede cubrir el stock actual. Se calcula comparando el inventario del último mes disponible con la demanda promedio diaria del mismo mes del año anterior, considerando la estacionalidad. Valores menores a 30 días indican riesgo de stockout, mientras que valores mayores a 90 días pueden indicar sobrestock.',
+    calculation: 'Días de Inventario = Inventario Actual / Demanda Promedio Diaria (del mismo mes año anterior). La demanda promedio diaria se calcula como: Unidades vendidas en el mes anterior / Días con ventas en ese mes.'
+  },
+  'analisisABC': {
+    description: 'Clasificación de productos en categorías A, B y C según su importancia en las ventas totales.',
+    meaning: 'El análisis ABC clasifica productos según el principio de Pareto (80/20): Clase A (top 20% productos = 80% ventas) son de alta prioridad y requieren atención especial en reposiciones. Clase B (siguiente 30% = 15% ventas) son de prioridad media. Clase C (resto 50% = 5% ventas) son de baja prioridad. Esto permite optimizar recursos y enfocar esfuerzos en productos críticos.',
+    calculation: 'Se ordenan todos los productos por ventas totales descendente. Se calcula el porcentaje acumulado de ventas. Productos con porcentaje acumulado ≤ 80% son Clase A, entre 80-95% son Clase B, y > 95% son Clase C.'
+  },
+  'tiempoReposicion': {
+    description: 'Tiempo promedio estimado entre pedidos (lead time) basado en la frecuencia histórica de compras.',
+    meaning: 'Indica cuántos días en promedio transcurren entre pedidos de reposición. Se calcula analizando la frecuencia de pedidos históricos en Sell In. Un lead time corto indica rotación rápida y necesidad de reposiciones frecuentes, mientras que uno largo indica productos con menor frecuencia de compra.',
+    calculation: 'Lead Time = Días Totales del Período / Total de Pedidos. Se analiza la frecuencia de pedidos por sucursal/producto en los datos históricos de Sell In, calculando el tiempo promedio entre pedidos.'
+  },
+  'indiceCobertura': {
+    description: 'Porcentaje de demanda esperada que puede ser cubierta con el inventario actual, comparando con el mismo período del año anterior.',
+    meaning: 'Muestra qué porcentaje de la demanda esperada (basada en el mismo período del año anterior) puede ser cubierta con el inventario actual. Un índice del 100% o más indica cobertura suficiente, entre 50-100% indica cobertura parcial, y menos de 50% indica cobertura insuficiente y necesidad de reposición.',
+    calculation: 'Índice de Cobertura = (Inventario Actual / Demanda del Período Anterior) × 100. Se compara el inventario del último mes disponible con las unidades vendidas (Sell Out) del mismo mes del año anterior para considerar estacionalidad.'
   }
 }
 

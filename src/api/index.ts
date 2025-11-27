@@ -62,3 +62,8 @@ export const fetchInventario = async (limit = 1000, offset = 0) => {
   return response.data
 }
 
+export const fetchInventoryOptimization = async () => {
+  const response = await api.get('/inventory-optimization')
+  return response.data
+}
+

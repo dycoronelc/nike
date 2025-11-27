@@ -709,6 +709,371 @@ export async function getSucursalesForClustering() {
   }
 }
 
+// ============================================
+// FUNCIONES DE OPTIMIZACIÓN DE INVENTARIO
+// ============================================
+
+// Obtener días de inventario disponible por producto/sucursal
+// Compara con el mismo período del año anterior para considerar estacionalidad
+export async function getDiasInventarioDisponible() {
+  try {
+    // Obtener el último mes disponible en inventario
+    const [ultimoMes] = await pool.query(`
+      SELECT año, mes
+      FROM inventario
+      WHERE existencia IS NOT NULL
+      ORDER BY año DESC, mes DESC
+      LIMIT 1
+    `);
+
+    if (!ultimoMes || ultimoMes.length === 0) {
+      return [];
+    }
+
+    const { año: añoActual, mes: mesActual } = ultimoMes[0];
+    const añoAnterior = añoActual - 1;
+
+    // Obtener inventario actual por producto y sucursal
+    const [inventarioActual] = await pool.query(`
+      SELECT 
+        i.nombre_sucursal,
+        i.categoria,
+        i.genero_arreglado,
+        SUM(i.existencia) as existencia_actual
+      FROM inventario i
+      WHERE i.año = ? AND i.mes = ? AND i.existencia IS NOT NULL
+      GROUP BY i.nombre_sucursal, i.categoria, i.genero_arreglado
+    `, [añoActual, mesActual]);
+
+    // Obtener demanda promedio diaria del mismo período del año anterior
+    const [demandaAnterior] = await pool.query(`
+      SELECT 
+        so.nombre_sucursal,
+        so.categoria,
+        so.genero_arreglado,
+        SUM(so.cantidad) as unidades_vendidas,
+        COUNT(DISTINCT DATE(so.fecha)) as dias_con_ventas
+      FROM sell_out so
+      WHERE YEAR(so.fecha) = ? 
+        AND MONTH(so.fecha) = ?
+        AND so.cantidad IS NOT NULL
+        AND so.cantidad > 0
+      GROUP BY so.nombre_sucursal, so.categoria, so.genero_arreglado
+    `, [añoAnterior, mesActual]);
+
+    // Crear mapa de demanda por sucursal/categoría/género
+    const demandaMap = {};
+    demandaAnterior.forEach(d => {
+      const key = `${d.nombre_sucursal || 'Todas'}|${d.categoria || 'Sin categoría'}|${d.genero_arreglado || 'Sin género'}`;
+      const diasConVentas = d.dias_con_ventas || 1;
+      demandaMap[key] = {
+        unidades_vendidas: parseFloat(d.unidades_vendidas || 0),
+        dias_con_ventas: diasConVentas,
+        demanda_promedio_diaria: parseFloat(d.unidades_vendidas || 0) / diasConVentas
+      };
+    });
+
+    // Calcular días de inventario disponible
+    const resultado = inventarioActual.map(inv => {
+      const key = `${inv.nombre_sucursal || 'Todas'}|${inv.categoria || 'Sin categoría'}|${inv.genero_arreglado || 'Sin género'}`;
+      const demanda = demandaMap[key];
+      const existencia = parseFloat(inv.existencia_actual || 0);
+      
+      let dias_inventario = 0;
+      if (demanda && demanda.demanda_promedio_diaria > 0) {
+        dias_inventario = existencia / demanda.demanda_promedio_diaria;
+      } else if (existencia > 0) {
+        // Si no hay datos del año anterior, marcar como "sin comparación"
+        dias_inventario = -1;
+      }
+
+      return {
+        sucursal: inv.nombre_sucursal || 'Todas',
+        categoria: inv.categoria || 'Sin categoría',
+        genero: inv.genero_arreglado || 'Sin género',
+        existencia_actual: existencia,
+        demanda_promedio_diaria_anterior: demanda?.demanda_promedio_diaria || 0,
+        dias_inventario_disponible: dias_inventario,
+        periodo_comparacion: `${mesActual}/${añoAnterior}`,
+        tiene_datos_historicos: !!demanda
+      };
+    });
+
+    return resultado;
+  } catch (error) {
+    console.error('Error calculando días de inventario disponible:', error);
+    throw error;
+  }
+}
+
+// Análisis ABC de productos
+// Clasifica productos en A (80% ventas), B (15% ventas), C (5% ventas)
+export async function getAnalisisABC() {
+  try {
+    // Obtener ventas totales por producto (silueta)
+    const [productos] = await pool.query(`
+      SELECT 
+        so.silueta,
+        so.categoria,
+        so.genero_arreglado,
+        SUM(so.ventas) as ventas_totales,
+        SUM(so.cantidad) as unidades_totales,
+        COUNT(DISTINCT so.nombre_sucursal) as sucursales_distintas
+      FROM sell_out so
+      WHERE so.ventas IS NOT NULL AND so.ventas > 0
+      GROUP BY so.silueta, so.categoria, so.genero_arreglado
+      ORDER BY ventas_totales DESC
+    `);
+
+    if (!productos || productos.length === 0) {
+      return { claseA: [], claseB: [], claseC: [], totalVentas: 0 };
+    }
+
+    // Calcular ventas totales
+    const totalVentas = productos.reduce((sum, p) => sum + parseFloat(p.ventas_totales || 0), 0);
+
+    // Calcular ventas acumuladas y clasificar
+    let ventasAcumuladas = 0;
+    const claseA = [];
+    const claseB = [];
+    const claseC = [];
+
+    productos.forEach((producto, index) => {
+      const ventas = parseFloat(producto.ventas_totales || 0);
+      ventasAcumuladas += ventas;
+      const porcentajeAcumulado = (ventasAcumuladas / totalVentas) * 100;
+
+      const productoInfo = {
+        silueta: producto.silueta,
+        categoria: producto.categoria || 'Sin categoría',
+        genero: producto.genero_arreglado || 'Sin género',
+        ventas_totales: ventas,
+        unidades_totales: parseInt(producto.unidades_totales || 0),
+        porcentaje_ventas: (ventas / totalVentas) * 100,
+        porcentaje_acumulado: porcentajeAcumulado,
+        sucursales_distintas: parseInt(producto.sucursales_distintas || 0),
+        ranking: index + 1
+      };
+
+      if (porcentajeAcumulado <= 80) {
+        claseA.push(productoInfo);
+      } else if (porcentajeAcumulado <= 95) {
+        claseB.push(productoInfo);
+      } else {
+        claseC.push(productoInfo);
+      }
+    });
+
+    return {
+      claseA,
+      claseB,
+      claseC,
+      totalVentas,
+      totalProductos: productos.length,
+      resumen: {
+        claseA: {
+          cantidad: claseA.length,
+          porcentaje_productos: (claseA.length / productos.length) * 100,
+          porcentaje_ventas: claseA.reduce((sum, p) => sum + p.ventas_totales, 0) / totalVentas * 100
+        },
+        claseB: {
+          cantidad: claseB.length,
+          porcentaje_productos: (claseB.length / productos.length) * 100,
+          porcentaje_ventas: claseB.reduce((sum, p) => sum + p.ventas_totales, 0) / totalVentas * 100
+        },
+        claseC: {
+          cantidad: claseC.length,
+          porcentaje_productos: (claseC.length / productos.length) * 100,
+          porcentaje_ventas: claseC.reduce((sum, p) => sum + p.ventas_totales, 0) / totalVentas * 100
+        }
+      }
+    };
+  } catch (error) {
+    console.error('Error calculando análisis ABC:', error);
+    throw error;
+  }
+}
+
+// Calcular tiempo de reposición estimado (lead time)
+// Basado en frecuencia de pedidos en Sell In
+export async function getTiempoReposicion() {
+  try {
+    // Obtener frecuencia de pedidos por sucursal/producto
+    const [pedidos] = await pool.query(`
+      SELECT 
+        si.nombre_sucursal,
+        si.silueta,
+        si.categoria,
+        COUNT(DISTINCT DATE(si.fecha)) as dias_con_pedidos,
+        MIN(si.fecha) as primera_fecha,
+        MAX(si.fecha) as ultima_fecha,
+        DATEDIFF(MAX(si.fecha), MIN(si.fecha)) as dias_totales,
+        COUNT(*) as total_pedidos
+      FROM sell_in si
+      WHERE si.fecha IS NOT NULL
+      GROUP BY si.nombre_sucursal, si.silueta, si.categoria
+      HAVING dias_totales > 0
+    `);
+
+    const resultado = pedidos.map(p => {
+      const diasTotales = parseInt(p.dias_totales || 1);
+      const totalPedidos = parseInt(p.total_pedidos || 0);
+      const diasConPedidos = parseInt(p.dias_con_pedidos || 1);
+      
+      // Tiempo promedio entre pedidos
+      const tiempoEntrePedidos = diasTotales / Math.max(totalPedidos, 1);
+      
+      // Tiempo de reposición estimado (promedio de días entre pedidos)
+      const leadTime = tiempoEntrePedidos;
+
+      return {
+        sucursal: p.nombre_sucursal || 'Todas',
+        silueta: p.silueta,
+        categoria: p.categoria || 'Sin categoría',
+        dias_totales: diasTotales,
+        total_pedidos: totalPedidos,
+        dias_con_pedidos: diasConPedidos,
+        tiempo_entre_pedidos: Math.round(tiempoEntrePedidos * 10) / 10,
+        lead_time_estimado: Math.round(leadTime * 10) / 10
+      };
+    });
+
+    // Calcular estadísticas generales
+    const leadTimes = resultado.filter(r => r.lead_time_estimado > 0).map(r => r.lead_time_estimado);
+    const promedioLeadTime = leadTimes.length > 0 
+      ? leadTimes.reduce((sum, lt) => sum + lt, 0) / leadTimes.length 
+      : 0;
+
+    return {
+      detalle: resultado,
+      estadisticas: {
+        promedio_lead_time: Math.round(promedioLeadTime * 10) / 10,
+        minimo_lead_time: leadTimes.length > 0 ? Math.min(...leadTimes) : 0,
+        maximo_lead_time: leadTimes.length > 0 ? Math.max(...leadTimes) : 0,
+        total_registros: resultado.length
+      }
+    };
+  } catch (error) {
+    console.error('Error calculando tiempo de reposición:', error);
+    throw error;
+  }
+}
+
+// Índice de cobertura de inventario
+// Compara inventario actual con demanda esperada del mismo período anterior
+export async function getIndiceCoberturaInventario() {
+  try {
+    // Obtener último mes disponible en inventario
+    const [ultimoMes] = await pool.query(`
+      SELECT año, mes
+      FROM inventario
+      WHERE existencia IS NOT NULL
+      ORDER BY año DESC, mes DESC
+      LIMIT 1
+    `);
+
+    if (!ultimoMes || ultimoMes.length === 0) {
+      return [];
+    }
+
+    const { año: añoActual, mes: mesActual } = ultimoMes[0];
+    const añoAnterior = añoActual - 1;
+
+    // Inventario actual por categoría/género
+    const [inventario] = await pool.query(`
+      SELECT 
+        i.categoria,
+        i.genero_arreglado,
+        SUM(i.existencia) as existencia_actual
+      FROM inventario i
+      WHERE i.año = ? AND i.mes = ? AND i.existencia IS NOT NULL
+      GROUP BY i.categoria, i.genero_arreglado
+    `, [añoActual, mesActual]);
+
+    // Demanda del mismo período anterior
+    const [demandaAnterior] = await pool.query(`
+      SELECT 
+        so.categoria,
+        so.genero_arreglado,
+        SUM(so.cantidad) as demanda_periodo_anterior
+      FROM sell_out so
+      WHERE YEAR(so.fecha) = ? 
+        AND MONTH(so.fecha) = ?
+        AND so.cantidad IS NOT NULL
+        AND so.cantidad > 0
+      GROUP BY so.categoria, so.genero_arreglado
+    `, [añoAnterior, mesActual]);
+
+    // Crear mapa de demanda
+    const demandaMap = {};
+    demandaAnterior.forEach(d => {
+      const key = `${d.categoria || 'Sin categoría'}|${d.genero_arreglado || 'Sin género'}`;
+      demandaMap[key] = parseFloat(d.demanda_periodo_anterior || 0);
+    });
+
+    // Calcular índice de cobertura
+    const resultado = inventario.map(inv => {
+      const key = `${inv.categoria || 'Sin categoría'}|${inv.genero_arreglado || 'Sin género'}`;
+      const existencia = parseFloat(inv.existencia_actual || 0);
+      const demanda = demandaMap[key] || 0;
+      
+      let indice_cobertura = 0;
+      let estado = 'sin_datos';
+      
+      if (demanda > 0) {
+        indice_cobertura = (existencia / demanda) * 100;
+        if (indice_cobertura >= 100) {
+          estado = 'suficiente';
+        } else if (indice_cobertura >= 50) {
+          estado = 'parcial';
+        } else {
+          estado = 'insuficiente';
+        }
+      } else if (existencia > 0) {
+        estado = 'sin_comparacion';
+      }
+
+      return {
+        categoria: inv.categoria || 'Sin categoría',
+        genero: inv.genero_arreglado || 'Sin género',
+        existencia_actual: existencia,
+        demanda_periodo_anterior: demanda,
+        indice_cobertura: Math.round(indice_cobertura * 10) / 10,
+        estado,
+        periodo_comparacion: `${mesActual}/${añoAnterior}`
+      };
+    });
+
+    return resultado;
+  } catch (error) {
+    console.error('Error calculando índice de cobertura:', error);
+    throw error;
+  }
+}
+
+// Función principal que obtiene todas las métricas de optimización
+export async function getInventoryOptimizationMetrics() {
+  try {
+    const [diasInventario, analisisABC, tiempoReposicion, indiceCobertura] = await Promise.all([
+      getDiasInventarioDisponible(),
+      getAnalisisABC(),
+      getTiempoReposicion(),
+      getIndiceCoberturaInventario()
+    ]);
+
+    return {
+      diasInventarioDisponible: diasInventario,
+      analisisABC,
+      tiempoReposicion,
+      indiceCoberturaInventario: indiceCobertura,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error obteniendo métricas de optimización:', error);
+    throw error;
+  }
+}
+
 // Cerrar pool de conexiones
 export async function closePool() {
   await pool.end();

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { KPICard, TimeSeriesChart, PredictionChart, InfoModal } from './'
+import { KPICard, TimeSeriesChart, PredictionChart, InfoModal, InventoryOptimization } from './'
 import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchProductClusters, fetchSucursalClusters } from '../api'
 import { useFilters } from '../contexts/FilterContext'
 import { indicatorsInfo } from '../data/indicatorsInfo'
@@ -32,6 +32,14 @@ export default function Dashboard() {
       title = 'Gráfico de Predicciones'
     } else if (key === 'clusterChart') {
       title = 'Gráfico de Clustering'
+    } else if (key === 'diasInventario') {
+      title = 'Días de Inventario Disponible'
+    } else if (key === 'analisisABC') {
+      title = 'Análisis ABC de Productos'
+    } else if (key === 'tiempoReposicion') {
+      title = 'Tiempo de Reposición (Lead Time)'
+    } else if (key === 'indiceCobertura') {
+      title = 'Índice de Cobertura de Inventario'
     } else {
       // Para KPIs, crear título descriptivo
       const parts = key.split('-')
@@ -333,6 +341,11 @@ export default function Dashboard() {
         ) : (
           <div className="chart-loading">No se encontraron clusters de sucursales</div>
         )}
+      </section>
+
+      {/* Optimización de Inventario */}
+      <section className="section">
+        <InventoryOptimization onInfoClick={handleInfoClick} />
       </section>
 
       {/* Info Modal */}
