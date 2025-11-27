@@ -78,12 +78,6 @@ export default function Dashboard() {
     enabled: !!timeSeries,
   })
 
-  const { data: clusters, isLoading: clustersLoading } = useQuery({
-    queryKey: ['clusters', timeSeries, kpis],
-    queryFn: fetchClusters,
-    enabled: !!timeSeries && !!kpis,
-  })
-
   const { data: productClusters, isLoading: productClustersLoading, error: productClustersError } = useQuery({
     queryKey: ['productClusters'],
     queryFn: fetchProductClusters,
