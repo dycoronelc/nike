@@ -260,7 +260,7 @@ export default function Dashboard() {
                   <ClusterCard
                     key={cluster.cluster}
                     nombre={cluster.nombre}
-                    cantidad={cluster.cantidad}
+                    cantidad={cluster.cantidadOriginal !== undefined ? cluster.cantidadOriginal : cluster.cantidad}
                     promedioVentas={cluster.promedioVentas}
                     promedioTicket={cluster.promedioTicket}
                     promedioRotacion={cluster.promedioRotacion}
@@ -309,7 +309,7 @@ export default function Dashboard() {
                 <ClusterCard
                   key={cluster.cluster}
                   nombre={cluster.nombre}
-                  cantidad={cluster.cantidad}
+                  cantidad={cluster.cantidadOriginal !== undefined ? cluster.cantidadOriginal : cluster.cantidad}
                   promedioVentas={cluster.promedioVentas}
                   promedioTicket={cluster.promedioTicket}
                   promedioRotacion={cluster.promedioRotacion}

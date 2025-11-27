@@ -513,10 +513,14 @@ export async function calculateProductClusters(productosData, k = 4) {
       // Esta es la cantidad TOTAL de productos únicos en el cluster
       const cantidadProductosUnicos = productosUnicos.length;
       
+      // La cantidad debe ser el número de productos únicos (siluetas) en este cluster
+      // cantidadOriginal guarda el valor original antes de cualquier división
+      const cantidadProductosUnicos = productosUnicos.length;
+      
       clusterCharacteristics.push({
         cluster: i,
-        cantidad: cantidadProductosUnicos, // Cantidad TOTAL de productos únicos en el cluster
-        cantidadOriginal: cantidadProductosUnicos, // Guardar cantidad original para divisiones
+        cantidad: cantidadProductosUnicos, // Cantidad actual (puede cambiar al dividir)
+        cantidadOriginal: cantidadProductosUnicos, // Valor original antes de divisiones (NO cambia)
         promedioVentas: mean(clusterItems.map(item => item.ventas_totales)),
         promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
         promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
@@ -553,17 +557,21 @@ export async function calculateProductClusters(productosData, k = 4) {
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(p => p.ventas));
-      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop);
-      largestCluster.cantidadOriginal = Math.round(cantidadOriginal * proporcionTop);
+      const topCantidad = Math.round(cantidadOriginal * proporcionTop);
+      // IMPORTANTE: cantidadOriginal NO debe cambiar, mantener el valor original
+      // cantidad debe reflejar la cantidad real del cluster después de dividir
+      largestCluster.cantidad = topCantidad;
+      // NO modificar largestCluster.cantidadOriginal - se mantiene con su valor original
       largestCluster.promedioVentas = topVentas;
       largestCluster.productos = topHalf;
       
       // Agregar la mitad inferior como nuevo cluster
       const bottomVentas = mean(bottomHalf.map(p => p.ventas));
+      const bottomCantidad = Math.round(cantidadOriginal * proporcionBottom);
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: Math.round(cantidadOriginal * proporcionBottom), // Mantener proporción de cantidad total
-        cantidadOriginal: Math.round(cantidadOriginal * proporcionBottom),
+        cantidad: bottomCantidad, // Cantidad real del nuevo cluster
+        cantidadOriginal: bottomCantidad, // Para el nuevo cluster, esta es su cantidad original (igual a cantidad)
         promedioVentas: bottomVentas,
         promedioUnidades: largestCluster.promedioUnidades,
         promedioTicket: largestCluster.promedioTicket,
@@ -734,17 +742,21 @@ export async function calculateSucursalClusters(sucursalesData, k = 4) {
       
       // Reemplazar el cluster original con la mitad superior
       const topVentas = mean(topHalf.map(s => s.ventas));
-      largestCluster.cantidad = Math.round(cantidadOriginal * proporcionTop); // Mantener proporción de cantidad total
-      largestCluster.cantidadOriginal = Math.round(cantidadOriginal * proporcionTop);
+      const topCantidad = Math.round(cantidadOriginal * proporcionTop);
+      // IMPORTANTE: cantidadOriginal NO debe cambiar, mantener el valor original
+      // cantidad debe reflejar la cantidad real del cluster después de dividir
+      largestCluster.cantidad = topCantidad;
+      // NO modificar largestCluster.cantidadOriginal - se mantiene con su valor original
       largestCluster.promedioVentas = topVentas;
       largestCluster.sucursales = topHalf;
       
       // Agregar la mitad inferior como nuevo cluster
       const bottomVentas = mean(bottomHalf.map(s => s.ventas));
+      const bottomCantidad = Math.round(cantidadOriginal * proporcionBottom);
       clusterCharacteristics.push({
         cluster: clusterCharacteristics.length,
-        cantidad: Math.round(cantidadOriginal * proporcionBottom), // Mantener proporción de cantidad total
-        cantidadOriginal: Math.round(cantidadOriginal * proporcionBottom),
+        cantidad: bottomCantidad, // Cantidad real del nuevo cluster
+        cantidadOriginal: bottomCantidad, // Para el nuevo cluster, esta es su cantidad original (igual a cantidad)
         promedioVentas: bottomVentas,
         promedioTicket: largestCluster.promedioTicket,
         promedioRotacion: largestCluster.promedioRotacion,
