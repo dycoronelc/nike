@@ -1141,7 +1141,7 @@ export async function getScatterDataSellInVsSellOut() {
       ORDER BY (ventas_sell_in + ventas_sell_out) DESC
     `);
 
-    return scatterDataFixed.map((row: any) => ({
+    return scatterDataFixed.map(row => ({
       nombre_sucursal: row.nombre_sucursal || 'Sin nombre',
       canal: row.canal || 'Sin canal',
       ventas_sell_in: parseFloat(row.ventas_sell_in || 0),

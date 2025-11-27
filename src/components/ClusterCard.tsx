@@ -25,7 +25,6 @@ export default function ClusterCard({
   onInfoClick
 }: ClusterCardProps) {
   const items = productos || sucursales || []
-  const itemType = productos ? 'productos' : 'sucursales'
   const itemLabel = productos ? 'Productos' : 'Sucursales'
 
   return (
