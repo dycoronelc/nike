@@ -7,6 +7,39 @@ interface InventoryOptimizationProps {
   onInfoClick?: (section: string) => void
 }
 
+interface DiasInventarioItem {
+  sucursal: string
+  categoria: string
+  genero: string
+  existencia_actual: number
+  demanda_promedio_diaria_anterior: number
+  dias_inventario_disponible: number
+  periodo_comparacion: string
+  tiene_datos_historicos: boolean
+}
+
+interface ProductoABC {
+  silueta: string
+  categoria: string
+  genero: string
+  ventas_totales: number
+  unidades_totales: number
+  porcentaje_ventas: number
+  porcentaje_acumulado: number
+  sucursales_distintas: number
+  ranking: number
+}
+
+interface CoberturaItem {
+  categoria: string
+  genero: string
+  existencia_actual: number
+  demanda_periodo_anterior: number
+  indice_cobertura: number
+  estado: string
+  periodo_comparacion: string
+}
+
 export default function InventoryOptimization({ onInfoClick }: InventoryOptimizationProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['inventoryOptimization'],
@@ -35,12 +68,12 @@ export default function InventoryOptimization({ onInfoClick }: InventoryOptimiza
   const { diasInventarioDisponible, analisisABC, tiempoReposicion, indiceCoberturaInventario } = data
 
   // Filtrar productos con días de inventario disponibles (excluir -1 que significa sin datos)
-  const productosConDias = diasInventarioDisponible?.filter(p => p.dias_inventario_disponible > 0) || []
-  const productosBajoStock = productosConDias.filter(p => p.dias_inventario_disponible < 30)
-  const productosSobreStock = productosConDias.filter(p => p.dias_inventario_disponible > 90)
+  const productosConDias = (diasInventarioDisponible as DiasInventarioItem[] | undefined)?.filter((p: DiasInventarioItem) => p.dias_inventario_disponible > 0) || []
+  const productosBajoStock = productosConDias.filter((p: DiasInventarioItem) => p.dias_inventario_disponible < 30)
+  const productosSobreStock = productosConDias.filter((p: DiasInventarioItem) => p.dias_inventario_disponible > 90)
 
   // Productos con cobertura insuficiente
-  const productosInsuficientes = indiceCoberturaInventario?.filter(p => p.estado === 'insuficiente') || []
+  const productosInsuficientes = (indiceCoberturaInventario as CoberturaItem[] | undefined)?.filter((p: CoberturaItem) => p.estado === 'insuficiente') || []
 
   return (
     <div className="inventory-optimization">
@@ -83,7 +116,7 @@ export default function InventoryOptimization({ onInfoClick }: InventoryOptimiza
               <div className="alert-list">
                 <h5>⚠️ Productos que requieren reposición:</h5>
                 <ul>
-                  {productosBajoStock.slice(0, 5).map((p, idx) => (
+                  {productosBajoStock.slice(0, 5).map((p: DiasInventarioItem, idx: number) => (
                     <li key={idx}>
                       <strong>{p.sucursal}</strong> - {p.categoria} ({p.genero}):{' '}
                       <span className="highlight">
@@ -148,7 +181,7 @@ export default function InventoryOptimization({ onInfoClick }: InventoryOptimiza
               <div className="top-products">
                 <h5>Top 5 Productos Clase A:</h5>
                 <ul>
-                  {analisisABC.claseA.slice(0, 5).map((p, idx) => (
+                  {(analisisABC.claseA as ProductoABC[]).slice(0, 5).map((p: ProductoABC, idx: number) => (
                     <li key={idx}>
                       <strong>{p.silueta}</strong> - {p.categoria} ({p.genero}):{' '}
                       <span className="highlight">
@@ -242,7 +275,7 @@ export default function InventoryOptimization({ onInfoClick }: InventoryOptimiza
               <div className="alert-list">
                 <h5>⚠️ Categorías con cobertura insuficiente:</h5>
                 <ul>
-                  {productosInsuficientes.slice(0, 5).map((p, idx) => (
+                  {productosInsuficientes.slice(0, 5).map((p: CoberturaItem, idx: number) => (
                     <li key={idx}>
                       <strong>{p.categoria}</strong> ({p.genero}):{' '}
                       <span className="highlight">
