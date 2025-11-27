@@ -1,67 +1,244 @@
-import { mean, standardDeviation, linearRegression } from 'simple-statistics';
+import { mean, standardDeviation, linearRegression, sampleCorrelation } from 'simple-statistics';
 import { Matrix } from 'ml-matrix';
 import OpenAI from 'openai';
 
-// Predicción de ventas usando regresión lineal
+// Predicción de ventas usando modelo tipo Prophet (con estacionalidad y features temporales)
 export async function predictSales(timeSeries, monthsAhead = 3) {
   if (!timeSeries || timeSeries.length < 2) {
     throw new Error('Datos insuficientes para predicción');
   }
 
-  const data = timeSeries.map((item, index) => ({
-    x: index,
-    y: item.sellIn.ventas + item.sellOut.ventas
-  }));
-
-  const regression = linearRegression(data.map(d => [d.x, d.y]));
+  // Preparar datos con features temporales
+  const dataWithFeatures = prepareTimeSeriesFeatures(timeSeries);
   
-  const lastIndex = data.length - 1;
+  // Descomponer en tendencia, estacionalidad y residual
+  const decomposition = decomposeTimeSeries(dataWithFeatures);
+  
+  // Ajustar modelo de tendencia (regresión lineal mejorada)
+  const trendModel = fitTrendModel(dataWithFeatures, decomposition.trend);
+  
+  // Modelo de estacionalidad (promedio por mes del año)
+  const seasonalModel = fitSeasonalModel(dataWithFeatures, decomposition.seasonal);
+  
+  // Generar predicciones
+  const lastIndex = dataWithFeatures.length - 1;
   const predictions = [];
+  const historicalData = [];
 
+  // Datos históricos ajustados
+  const monthsToShow = Math.min(12, dataWithFeatures.length);
+  const startIndex = Math.max(0, dataWithFeatures.length - monthsToShow);
+  
+  for (let idx = startIndex; idx < dataWithFeatures.length; idx++) {
+    const item = dataWithFeatures[idx];
+    const trendPred = trendModel.predict(idx);
+    const seasonalComp = seasonalModel.getSeasonalComponent(item.mes);
+    const fitted = trendPred + seasonalComp;
+    
+    historicalData.push({
+      fecha: item.fecha,
+      ventas: item.ventas,
+      prediccion: Math.max(0, fitted),
+      tipo: 'historico'
+    });
+  }
+
+  // Calcular residuales y métricas una sola vez
+  const residuals = dataWithFeatures.map((item, idx) => {
+    const trendPred = trendModel.predict(idx);
+    const seasonalComp = seasonalModel.getSeasonalComponent(item.mes);
+    return item.ventas - (trendPred + seasonalComp);
+  });
+  const rmse = Math.sqrt(residuals.reduce((sum, r) => sum + r * r, 0) / residuals.length);
+  const stdResidual = standardDeviation(residuals) || rmse;
+  const confidenceInterval = 1.96 * stdResidual;
+
+  // Predicciones futuras
   for (let i = 1; i <= monthsAhead; i++) {
-    const futureX = lastIndex + i;
-    const predictedY = regression.m * futureX + regression.b;
+    const futureIndex = lastIndex + i;
     const futureDate = new Date(timeSeries[lastIndex].fecha + '-01');
     futureDate.setMonth(futureDate.getMonth() + i);
     const futureKey = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
-
-    // Calcular intervalo de confianza (simplificado)
-    const residuals = data.map(d => d.y - (regression.m * d.x + regression.b));
-    const rmse = Math.sqrt(residuals.reduce((sum, r) => sum + r * r, 0) / residuals.length);
+    const futureMes = futureDate.getMonth() + 1;
+    
+    // Predicción de tendencia
+    const trendPred = trendModel.predict(futureIndex);
+    
+    // Componente estacional
+    const seasonalComp = seasonalModel.getSeasonalComponent(futureMes);
+    
+    // Predicción final
+    const predictedY = trendPred + seasonalComp;
     
     predictions.push({
       fecha: futureKey,
       prediccion: Math.max(0, predictedY),
-      intervaloSuperior: Math.max(0, predictedY + 1.96 * rmse),
-      intervaloInferior: Math.max(0, predictedY - 1.96 * rmse),
-      confianza: Math.max(0, Math.min(100, 100 - (rmse / Math.abs(predictedY)) * 100))
+      intervaloSuperior: Math.max(0, predictedY + confidenceInterval),
+      intervaloInferior: Math.max(0, predictedY - confidenceInterval),
+      confianza: Math.max(0, Math.min(100, 100 - (rmse / Math.abs(predictedY || 1)) * 100))
     });
   }
 
-  // Preparar datos históricos para el gráfico (últimos 12 meses o todos si hay menos)
-  const monthsToShow = Math.min(12, data.length);
-  const startIndex = Math.max(0, data.length - monthsToShow);
-  const historicalData = data.slice(startIndex).map((item, idx) => {
-    const actualIndex = startIndex + idx;
-    const predictedY = regression.m * item.x + regression.b;
-    return {
-      fecha: timeSeries[actualIndex].fecha,
-      ventas: item.y,
-      prediccion: Math.max(0, predictedY),
-      tipo: 'historico'
-    };
-  });
+  // Calcular R²
+  const r2 = calculateR2Prophet(dataWithFeatures, trendModel, seasonalModel);
 
   return {
-    modelo: 'Regresión Lineal',
+    modelo: 'Prophet-like (Estacionalidad + Tendencia)',
     historicos: historicalData,
     predicciones: predictions,
     metrica: {
-      pendiente: regression.m,
-      intercepto: regression.b,
-      r2: calculateR2(data, regression)
+      pendiente: trendModel.slope,
+      intercepto: trendModel.intercept,
+      r2: r2,
+      rmse: rmse,
+      estacionalidad_detectada: seasonalModel.hasSeasonality
     }
   };
+}
+
+// Preparar features temporales (lags, promedios móviles)
+function prepareTimeSeriesFeatures(timeSeries) {
+  const data = timeSeries.map((item, index) => ({
+    index,
+    fecha: item.fecha,
+    ventas: item.sellIn.ventas + item.sellOut.ventas,
+    mes: parseInt(item.fecha.split('-')[1]),
+    año: parseInt(item.fecha.split('-')[0])
+  }));
+
+  // Agregar lags y promedios móviles
+  return data.map((item, idx) => {
+    const features = { ...item };
+    
+    // Lags
+    features.lag_1 = idx > 0 ? data[idx - 1].ventas : item.ventas;
+    features.lag_2 = idx > 1 ? data[idx - 2].ventas : item.ventas;
+    features.lag_3 = idx > 2 ? data[idx - 3].ventas : item.ventas;
+    
+    // Lag estacional (mismo mes, año anterior)
+    const sameMonthLastYear = data.find(d => 
+      d.mes === item.mes && d.año === item.año - 1
+    );
+    features.lag_12 = sameMonthLastYear ? sameMonthLastYear.ventas : item.ventas;
+    
+    // Promedios móviles
+    if (idx >= 2) {
+      features.ma_3 = mean(data.slice(Math.max(0, idx - 2), idx + 1).map(d => d.ventas));
+    } else {
+      features.ma_3 = item.ventas;
+    }
+    
+    if (idx >= 5) {
+      features.ma_6 = mean(data.slice(Math.max(0, idx - 5), idx + 1).map(d => d.ventas));
+    } else {
+      features.ma_6 = item.ventas;
+    }
+    
+    if (idx >= 11) {
+      features.ma_12 = mean(data.slice(Math.max(0, idx - 11), idx + 1).map(d => d.ventas));
+    } else {
+      features.ma_12 = item.ventas;
+    }
+    
+    // Tendencia (cambio vs mes anterior)
+    features.tendencia = idx > 0 ? ((item.ventas - data[idx - 1].ventas) / data[idx - 1].ventas) * 100 : 0;
+    
+    return features;
+  });
+}
+
+// Descomponer serie temporal en tendencia, estacionalidad y residual
+function decomposeTimeSeries(dataWithFeatures) {
+  // Calcular tendencia usando regresión lineal
+  const trendData = dataWithFeatures.map((item, idx) => ({
+    x: idx,
+    y: item.ventas
+  }));
+  const trendRegression = linearRegression(trendData.map(d => [d.x, d.y]));
+  
+  const trend = dataWithFeatures.map((item, idx) => 
+    trendRegression.m * idx + trendRegression.b
+  );
+  
+  // Calcular estacionalidad (promedio por mes)
+  const seasonalByMonth = {};
+  for (let mes = 1; mes <= 12; mes++) {
+    const monthData = dataWithFeatures.filter(d => d.mes === mes);
+    if (monthData.length > 0) {
+      const monthValues = monthData.map((d, idx) => {
+        const trendValue = trendRegression.m * d.index + trendRegression.b;
+        return d.ventas - trendValue; // Residual (deseasonalized)
+      });
+      seasonalByMonth[mes] = mean(monthValues);
+    } else {
+      seasonalByMonth[mes] = 0;
+    }
+  }
+  
+  // Normalizar estacionalidad (centrar en 0)
+  const avgSeasonal = mean(Object.values(seasonalByMonth));
+  const seasonal = {};
+  for (let mes = 1; mes <= 12; mes++) {
+    seasonal[mes] = seasonalByMonth[mes] - avgSeasonal;
+  }
+  
+  // Calcular residuales
+  const seasonalArray = dataWithFeatures.map(d => seasonal[d.mes]);
+  const residual = dataWithFeatures.map((d, idx) => 
+    d.ventas - trend[idx] - seasonalArray[idx]
+  );
+  
+  return { trend, seasonal, residual };
+}
+
+// Ajustar modelo de tendencia
+function fitTrendModel(dataWithFeatures, trend) {
+  const trendData = dataWithFeatures.map((item, idx) => ({
+    x: idx,
+    y: item.ventas
+  }));
+  
+  const regression = linearRegression(trendData.map(d => [d.x, d.y]));
+  
+  return {
+    slope: regression.m,
+    intercept: regression.b,
+    predict: (index) => regression.m * index + regression.b
+  };
+}
+
+// Modelo de estacionalidad
+function fitSeasonalModel(dataWithFeatures, seasonal) {
+  // Verificar si hay estacionalidad significativa
+  const seasonalValues = Object.values(seasonal);
+  const seasonalStd = standardDeviation(seasonalValues) || 0;
+  const hasSeasonality = seasonalStd > mean(dataWithFeatures.map(d => d.ventas)) * 0.1;
+  
+  return {
+    seasonal,
+    hasSeasonality,
+    getSeasonalComponent: (mes) => seasonal[mes] || 0
+  };
+}
+
+// Calcular R² para modelo Prophet-like
+function calculateR2Prophet(dataWithFeatures, trendModel, seasonalModel) {
+  const yMean = mean(dataWithFeatures.map(d => d.ventas));
+  
+  let ssRes = 0;
+  let ssTot = 0;
+  
+  dataWithFeatures.forEach((item, idx) => {
+    const trendPred = trendModel.predict(idx);
+    const seasonalComp = seasonalModel.getSeasonalComponent(item.mes);
+    const predicted = trendPred + seasonalComp;
+    const actual = item.ventas;
+    
+    ssRes += Math.pow(actual - predicted, 2);
+    ssTot += Math.pow(actual - yMean, 2);
+  });
+  
+  return ssTot > 0 ? 1 - (ssRes / ssTot) : 0;
 }
 
 function calculateR2(data, regression) {
@@ -208,6 +385,197 @@ function getClusterName(clusterId, items) {
   if ((avgSellIn + avgSellOut) > mean([avgSellIn, avgSellOut]) * 1.5) return 'Pico de Ventas';
   if ((avgSellIn + avgSellOut) < mean([avgSellIn, avgSellOut]) * 0.5) return 'Bajo Rendimiento';
   return 'Rendimiento Estable';
+}
+
+// Clustering por perfil de producto
+export async function calculateProductClusters(productosData, k = 6) {
+  if (!productosData || productosData.length < k) {
+    throw new Error('Datos insuficientes para clustering de productos');
+  }
+
+  // Preparar features: ventas, unidades, ticket promedio, frecuencia, ratio, rotación
+  const features = productosData.map(producto => [
+    producto.ventas_totales,
+    producto.unidades_totales,
+    producto.ticket_promedio,
+    producto.frecuencia_ventas,
+    producto.ratio_sellout_sellin,
+    producto.rotacion_inventario,
+    producto.sucursales_distintas,
+    producto.meses_activos
+  ]);
+
+  // Ajustar k si es necesario
+  if (features.length < k) {
+    k = Math.max(2, Math.floor(features.length / 2));
+  }
+
+  // Normalizar características
+  const normalizedFeatures = normalizeFeatures(features);
+
+  // K-means
+  const clusters = kMeans(normalizedFeatures, k);
+
+  // Mapear clusters de vuelta a productos
+  const clusteredProducts = productosData.map((producto, index) => ({
+    ...producto,
+    cluster: clusters.labels[index]
+  }));
+
+  // Características de cada cluster
+  const clusterCharacteristics = [];
+  for (let i = 0; i < k; i++) {
+    const clusterItems = clusteredProducts.filter(item => item.cluster === i);
+    if (clusterItems.length > 0) {
+      clusterCharacteristics.push({
+        cluster: i,
+        nombre: getProductClusterName(i, clusterItems),
+        cantidad: clusterItems.length,
+        promedioVentas: mean(clusterItems.map(item => item.ventas_totales)),
+        promedioUnidades: mean(clusterItems.map(item => item.unidades_totales)),
+        promedioTicket: mean(clusterItems.map(item => item.ticket_promedio)),
+        promedioRotacion: mean(clusterItems.map(item => item.rotacion_inventario)),
+        productos: clusterItems.map(item => ({
+          silueta: item.silueta,
+          categoria: item.categoria,
+          ventas: item.ventas_totales
+        })).sort((a, b) => b.ventas - a.ventas).slice(0, 10) // Top 10 productos del cluster
+      });
+    }
+  }
+
+  return {
+    clusters: clusteredProducts,
+    caracteristicas: clusterCharacteristics,
+    centroides: clusters.centroids
+  };
+}
+
+function getProductClusterName(clusterId, items) {
+  const avgVentas = mean(items.map(item => item.ventas_totales));
+  const avgTicket = mean(items.map(item => item.ticket_promedio));
+  const avgRotacion = mean(items.map(item => item.rotacion_inventario));
+  const avgRatio = mean(items.map(item => item.ratio_sellout_sellin));
+  
+  // Productos Estrella: alta venta, alta rotación
+  if (avgVentas > mean(items.map(i => i.ventas_totales)) * 1.5 && avgRotacion > 0.5) {
+    return 'Productos Estrella';
+  }
+  // Productos Premium: alta venta, alto ticket, bajo volumen
+  if (avgTicket > mean(items.map(i => i.ticket_promedio)) * 1.3 && avgRotacion < 0.3) {
+    return 'Productos Premium';
+  }
+  // Productos Masivos: alto volumen, bajo ticket
+  if (mean(items.map(i => i.unidades_totales)) > mean(items.map(i => i.unidades_totales)) * 1.2 && avgTicket < mean(items.map(i => i.ticket_promedio)) * 0.8) {
+    return 'Productos Masivos';
+  }
+  // Productos Lentos: baja venta, baja rotación
+  if (avgVentas < mean(items.map(i => i.ventas_totales)) * 0.5 && avgRotacion < 0.2) {
+    return 'Productos Lentos';
+  }
+  // Productos Estacionales: alta variabilidad en meses activos
+  const variabilidadMeses = standardDeviation(items.map(i => i.meses_activos)) || 0;
+  if (variabilidadMeses > mean(items.map(i => i.meses_activos)) * 0.5) {
+    return 'Productos Estacionales';
+  }
+  // Productos Emergentes: ratio alto pero ventas crecientes
+  if (avgRatio > 100 && avgRotacion > 0.3) {
+    return 'Productos Emergentes';
+  }
+  return 'Productos Estables';
+}
+
+// Clustering por perfil de sucursal
+export async function calculateSucursalClusters(sucursalesData, k = 5) {
+  if (!sucursalesData || sucursalesData.length < k) {
+    throw new Error('Datos insuficientes para clustering de sucursales');
+  }
+
+  // Preparar features: ventas, unidades, ticket, diversidad, rotación, estacionalidad
+  const features = sucursalesData.map(sucursal => [
+    sucursal.ventas_totales_sucursal,
+    sucursal.unidades_totales_sucursal,
+    sucursal.ticket_promedio_sucursal,
+    sucursal.diversidad_productos,
+    sucursal.rotacion_sucursal,
+    sucursal.estacionalidad || 0,
+    sucursal.ratio_sellout_sellin_sucursal
+  ]);
+
+  // Ajustar k si es necesario
+  if (features.length < k) {
+    k = Math.max(2, Math.floor(features.length / 2));
+  }
+
+  // Normalizar características
+  const normalizedFeatures = normalizeFeatures(features);
+
+  // K-means
+  const clusters = kMeans(normalizedFeatures, k);
+
+  // Mapear clusters de vuelta a sucursales
+  const clusteredSucursales = sucursalesData.map((sucursal, index) => ({
+    ...sucursal,
+    cluster: clusters.labels[index]
+  }));
+
+  // Características de cada cluster
+  const clusterCharacteristics = [];
+  for (let i = 0; i < k; i++) {
+    const clusterItems = clusteredSucursales.filter(item => item.cluster === i);
+    if (clusterItems.length > 0) {
+      clusterCharacteristics.push({
+        cluster: i,
+        nombre: getSucursalClusterName(i, clusterItems),
+        cantidad: clusterItems.length,
+        promedioVentas: mean(clusterItems.map(item => item.ventas_totales_sucursal)),
+        promedioTicket: mean(clusterItems.map(item => item.ticket_promedio_sucursal)),
+        promedioRotacion: mean(clusterItems.map(item => item.rotacion_sucursal)),
+        promedioDiversidad: mean(clusterItems.map(item => item.diversidad_productos)),
+        sucursales: clusterItems.map(item => ({
+          nombre: item.nombre_sucursal,
+          canal: item.canal,
+          ventas: item.ventas_totales_sucursal
+        })).sort((a, b) => b.ventas - a.ventas).slice(0, 10) // Top 10 sucursales del cluster
+      });
+    }
+  }
+
+  return {
+    clusters: clusteredSucursales,
+    caracteristicas: clusterCharacteristics,
+    centroides: clusters.centroids
+  };
+}
+
+function getSucursalClusterName(clusterId, items) {
+  const avgVentas = mean(items.map(item => item.ventas_totales_sucursal));
+  const avgTicket = mean(items.map(item => item.ticket_promedio_sucursal));
+  const avgRotacion = mean(items.map(item => item.rotacion_sucursal));
+  const avgDiversidad = mean(items.map(item => item.diversidad_productos));
+  
+  // Sucursales Premium: alto ticket, alta rotación
+  if (avgTicket > mean(items.map(i => i.ticket_promedio_sucursal)) * 1.3 && avgRotacion > 0.5) {
+    return 'Sucursales Premium';
+  }
+  // Sucursales Masivas: alto volumen, bajo ticket
+  if (mean(items.map(i => i.unidades_totales_sucursal)) > mean(items.map(i => i.unidades_totales_sucursal)) * 1.2 && avgTicket < mean(items.map(i => i.ticket_promedio_sucursal)) * 0.8) {
+    return 'Sucursales Masivas';
+  }
+  // Sucursales Estables: rendimiento medio consistente
+  if (avgRotacion > 0.3 && avgRotacion < 0.7 && avgDiversidad > mean(items.map(i => i.diversidad_productos)) * 0.8) {
+    return 'Sucursales Estables';
+  }
+  // Sucursales Oportunidad: bajo rendimiento
+  if (avgVentas < mean(items.map(i => i.ventas_totales_sucursal)) * 0.6) {
+    return 'Sucursales Oportunidad';
+  }
+  // Sucursales Estacionales: alta estacionalidad
+  const avgEstacionalidad = mean(items.map(i => i.estacionalidad || 0));
+  if (avgEstacionalidad > mean(items.map(i => i.estacionalidad || 0)) * 1.5) {
+    return 'Sucursales Estacionales';
+  }
+  return 'Sucursales Regulares';
 }
 
 // Funciones auxiliares para análisis profundos

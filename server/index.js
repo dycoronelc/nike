@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import express from 'express';
 import cors from 'cors';
-import { predictSales, calculateClusters, analyzeQuery } from './ml-service.js';
+import { predictSales, calculateClusters, calculateProductClusters, calculateSucursalClusters, analyzeQuery } from './ml-service.js';
 import * as db from './db.js';
 import { testConnection } from './db.js';
 
@@ -197,6 +197,36 @@ app.get('/api/clusters', async (req, res) => {
     });
   } catch (error) {
     console.error('Error calculando clusters:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para clustering de productos
+app.get('/api/clusters/productos', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const productosData = await db.getProductosForClustering();
+    const clusters = await calculateProductClusters(productosData);
+    res.json(clusters);
+  } catch (error) {
+    console.error('Error calculando clusters de productos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para clustering de sucursales
+app.get('/api/clusters/sucursales', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const sucursalesData = await db.getSucursalesForClustering();
+    const clusters = await calculateSucursalClusters(sucursalesData);
+    res.json(clusters);
+  } catch (error) {
+    console.error('Error calculando clusters de sucursales:', error);
     res.status(500).json({ error: error.message });
   }
 });

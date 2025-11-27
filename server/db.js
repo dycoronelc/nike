@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { standardDeviation } from 'simple-statistics';
 
 // Configuración de la base de datos
 const dbConfig = {
@@ -549,6 +550,154 @@ export async function getTimeSeriesWithFilters(filters = {}) {
     return timeSeries;
   } catch (error) {
     console.error('Error obteniendo series temporales con filtros:', error);
+    throw error;
+  }
+}
+
+// Obtener datos de productos con métricas para clustering
+export async function getProductosForClustering() {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        so.silueta,
+        so.categoria,
+        so.familia,
+        so.genero_arreglado,
+        SUM(so.ventas) as ventas_totales,
+        SUM(so.cantidad) as unidades_totales,
+        AVG(so.ventas / NULLIF(so.cantidad, 0)) as ticket_promedio,
+        COUNT(*) as frecuencia_ventas,
+        COUNT(DISTINCT so.nombre_sucursal) as sucursales_distintas,
+        COUNT(DISTINCT DATE_FORMAT(so.fecha, '%Y-%m')) as meses_activos,
+        -- Ratio sell out / sell in
+        COALESCE(
+          (SELECT SUM(si.ventas) FROM sell_in si WHERE si.silueta = so.silueta),
+          0
+        ) as sell_in_total,
+        -- Inventario promedio
+        COALESCE(
+          (SELECT AVG(i.existencia) FROM inventario i WHERE i.categoria = so.categoria),
+          0
+        ) as inventario_promedio
+      FROM sell_out so
+      WHERE so.silueta IS NOT NULL 
+        AND so.ventas IS NOT NULL
+        AND so.cantidad IS NOT NULL
+      GROUP BY so.silueta, so.categoria, so.familia, so.genero_arreglado
+      HAVING ventas_totales > 0 AND unidades_totales > 0
+      ORDER BY ventas_totales DESC
+    `);
+
+    return rows.map(row => ({
+      silueta: row.silueta,
+      categoria: row.categoria || 'Sin categoría',
+      familia: row.familia || 'Sin familia',
+      genero_arreglado: row.genero_arreglado || 'Sin género',
+      ventas_totales: parseFloat(row.ventas_totales || 0),
+      unidades_totales: parseInt(row.unidades_totales || 0),
+      ticket_promedio: parseFloat(row.ticket_promedio || 0),
+      frecuencia_ventas: parseInt(row.frecuencia_ventas || 0),
+      sucursales_distintas: parseInt(row.sucursales_distintas || 0),
+      meses_activos: parseInt(row.meses_activos || 0),
+      sell_in_total: parseFloat(row.sell_in_total || 0),
+      inventario_promedio: parseFloat(row.inventario_promedio || 0),
+      ratio_sellout_sellin: row.sell_in_total > 0 
+        ? (parseFloat(row.ventas_totales) / parseFloat(row.sell_in_total)) * 100 
+        : 0,
+      rotacion_inventario: row.inventario_promedio > 0
+        ? parseFloat(row.ventas_totales) / parseFloat(row.inventario_promedio)
+        : 0
+    }));
+  } catch (error) {
+    console.error('Error obteniendo datos de productos para clustering:', error);
+    throw error;
+  }
+}
+
+// Obtener datos de sucursales con métricas para clustering
+export async function getSucursalesForClustering() {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        so.nombre_sucursal,
+        so.canal,
+        so.cuenta,
+        SUM(so.ventas) as ventas_totales_sucursal,
+        SUM(so.cantidad) as unidades_totales_sucursal,
+        AVG(so.ventas / NULLIF(so.cantidad, 0)) as ticket_promedio_sucursal,
+        COUNT(DISTINCT so.silueta) as diversidad_productos,
+        COUNT(DISTINCT DATE_FORMAT(so.fecha, '%Y-%m')) as meses_activos,
+        -- Ratio sell out / sell in
+        COALESCE(
+          (SELECT SUM(si.ventas) FROM sell_in si WHERE si.nombre_sucursal = so.nombre_sucursal),
+          0
+        ) as sell_in_total,
+        -- Inventario promedio
+        COALESCE(
+          (SELECT AVG(i.existencia) FROM inventario i WHERE i.nombre_sucursal = so.nombre_sucursal),
+          0
+        ) as inventario_promedio
+      FROM sell_out so
+      WHERE so.nombre_sucursal IS NOT NULL
+        AND so.ventas IS NOT NULL
+        AND so.cantidad IS NOT NULL
+      GROUP BY so.nombre_sucursal, so.canal, so.cuenta
+      HAVING ventas_totales_sucursal > 0 AND unidades_totales_sucursal > 0
+      ORDER BY ventas_totales_sucursal DESC
+    `);
+
+    // Calcular estacionalidad para cada sucursal
+    const sucursalesWithEstacionalidad = await Promise.all(rows.map(async (row) => {
+      // Obtener ventas mensuales para esta sucursal
+      const [monthlyData] = await pool.query(`
+        SELECT 
+          DATE_FORMAT(fecha, '%Y-%m') as mes,
+          SUM(ventas) as monthly_total
+        FROM sell_out
+        WHERE nombre_sucursal = ? AND ventas IS NOT NULL
+        GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+        ORDER BY mes
+      `, [row.nombre_sucursal]);
+
+      // Calcular desviación estándar de ventas mensuales
+      const monthlyTotals = monthlyData.map(m => parseFloat(m.monthly_total || 0));
+      const estacionalidad = monthlyTotals.length > 1 
+        ? (standardDeviation(monthlyTotals) || 0)
+        : 0;
+
+      // Obtener store_type
+      const [storeTypeData] = await pool.query(`
+        SELECT DISTINCT store_type
+        FROM inventario
+        WHERE nombre_sucursal = ? AND store_type IS NOT NULL
+        LIMIT 1
+      `, [row.nombre_sucursal]);
+
+      return {
+        nombre_sucursal: row.nombre_sucursal,
+        canal: row.canal || 'Sin canal',
+        cuenta: row.cuenta || 'Sin cuenta',
+        store_type: storeTypeData[0]?.store_type || 'Sin tipo',
+        ventas_totales_sucursal: parseFloat(row.ventas_totales_sucursal || 0),
+        unidades_totales_sucursal: parseInt(row.unidades_totales_sucursal || 0),
+        ticket_promedio_sucursal: parseFloat(row.ticket_promedio_sucursal || 0),
+        diversidad_productos: parseInt(row.diversidad_productos || 0),
+        meses_activos: parseInt(row.meses_activos || 0),
+        sell_in_total: parseFloat(row.sell_in_total || 0),
+        inventario_promedio: parseFloat(row.inventario_promedio || 0),
+        ratio_sellout_sellin_sucursal: row.sell_in_total > 0
+          ? (parseFloat(row.ventas_totales_sucursal) / parseFloat(row.sell_in_total)) * 100
+          : 0,
+        rotacion_sucursal: row.inventario_promedio > 0
+          ? parseFloat(row.ventas_totales_sucursal) / parseFloat(row.inventario_promedio)
+          : 0,
+        estacionalidad: estacionalidad
+      };
+    }));
+
+    return sucursalesWithEstacionalidad;
+  } catch (error) {
+    console.error('Error obteniendo datos de sucursales para clustering:', error);
     throw error;
   }
 }

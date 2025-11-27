@@ -32,6 +32,16 @@ export const fetchClusters = async () => {
   return response.data
 }
 
+export const fetchProductClusters = async () => {
+  const response = await api.get('/clusters/productos')
+  return response.data
+}
+
+export const fetchSucursalClusters = async () => {
+  const response = await api.get('/clusters/sucursales')
+  return response.data
+}
+
 export const sendChatMessage = async (message: string) => {
   const response = await api.post('/chat', { message })
   return response.data
