@@ -96,6 +96,20 @@ export default function Dashboard() {
     retry: 2,
   })
 
+  // Debug: Log para verificar datos
+  if (productClusters) {
+    console.log('📦 Product Clusters Data:', productClusters);
+  }
+  if (sucursalClusters) {
+    console.log('🏪 Sucursal Clusters Data:', sucursalClusters);
+  }
+  if (productClustersError) {
+    console.error('❌ Product Clusters Error:', productClustersError);
+  }
+  if (sucursalClustersError) {
+    console.error('❌ Sucursal Clusters Error:', sucursalClustersError);
+  }
+
   if (kpisLoading) {
     return (
       <div className="dashboard-loading">
@@ -287,8 +301,8 @@ export default function Dashboard() {
           <div className="chart-loading" style={{ color: 'var(--error)' }}>
             Error cargando clusters de sucursales: {sucursalClustersError.message || 'Error desconocido'}
           </div>
-        ) : (
-          sucursalClusters && sucursalClusters.caracteristicas && sucursalClusters.caracteristicas.length > 0 ? (
+        ) : sucursalClusters ? (
+          sucursalClusters.caracteristicas && sucursalClusters.caracteristicas.length > 0 ? (
             <div className="cluster-summary">
               <p className="cluster-description">
                 Se identificaron <strong>{sucursalClusters.caracteristicas?.length || 0} perfiles distintos</strong> de sucursales
