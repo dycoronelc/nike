@@ -510,10 +510,6 @@ export async function calculateProductClusters(productosData, k = 4) {
         .sort((a, b) => b.ventas - a.ventas);
       
       // La cantidad debe ser el número de productos únicos (siluetas) en este cluster
-      // Esta es la cantidad TOTAL de productos únicos en el cluster
-      const cantidadProductosUnicos = productosUnicos.length;
-      
-      // La cantidad debe ser el número de productos únicos (siluetas) en este cluster
       // cantidadOriginal guarda el valor original antes de cualquier división
       const cantidadProductosUnicos = productosUnicos.length;
       
