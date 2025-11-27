@@ -82,10 +82,28 @@ export async function predictSales(timeSeries, monthsAhead = 3) {
   // Calcular R²
   const r2 = calculateR2Prophet(dataWithFeatures, trendModel, seasonalModel);
 
+  // Calcular máximos y mínimos históricos para la banda de rango
+  const allVentas = dataWithFeatures.map(d => d.ventas);
+  const maxHistorico = Math.max(...allVentas);
+  const minHistorico = Math.min(...allVentas);
+  const promedioHistorico = mean(allVentas);
+  const desviacionHistorica = standardDeviation(allVentas) || 0;
+  
+  // Rango histórico: promedio ± 2 desviaciones estándar (aproximadamente 95% de los datos)
+  const rangoSuperior = promedioHistorico + (2 * desviacionHistorica);
+  const rangoInferior = Math.max(0, promedioHistorico - (2 * desviacionHistorica));
+
   return {
     modelo: 'Prophet-like (Estacionalidad + Tendencia)',
     historicos: historicalData,
     predicciones: predictions,
+    rangoHistorico: {
+      max: maxHistorico,
+      min: minHistorico,
+      promedio: promedioHistorico,
+      rangoSuperior: rangoSuperior,
+      rangoInferior: rangoInferior
+    },
     metrica: {
       pendiente: trendModel.slope,
       intercepto: trendModel.intercept,
