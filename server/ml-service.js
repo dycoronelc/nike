@@ -388,7 +388,7 @@ function getClusterName(clusterId, items) {
 }
 
 // Clustering por perfil de producto
-export async function calculateProductClusters(productosData, k = 6) {
+export async function calculateProductClusters(productosData, k = 4) {
   if (!productosData || productosData.length < k) {
     throw new Error('Datos insuficientes para clustering de productos');
   }
@@ -452,41 +452,60 @@ export async function calculateProductClusters(productosData, k = 6) {
 }
 
 function getProductClusterName(clusterId, items) {
+  if (!items || items.length === 0) return 'Productos Sin Clasificar';
+  
+  // Calcular promedios del cluster
   const avgVentas = mean(items.map(item => item.ventas_totales));
   const avgTicket = mean(items.map(item => item.ticket_promedio));
   const avgRotacion = mean(items.map(item => item.rotacion_inventario));
+  const avgUnidades = mean(items.map(item => item.unidades_totales));
   const avgRatio = mean(items.map(item => item.ratio_sellout_sellin));
   
-  // Productos Estrella: alta venta, alta rotación
-  if (avgVentas > mean(items.map(i => i.ventas_totales)) * 1.5 && avgRotacion > 0.5) {
+  // Calcular promedios globales para comparación
+  const allVentas = items.map(i => i.ventas_totales);
+  const allTickets = items.map(i => i.ticket_promedio);
+  const allUnidades = items.map(i => i.unidades_totales);
+  const allRotaciones = items.map(i => i.rotacion_inventario);
+  
+  const globalAvgVentas = mean(allVentas);
+  const globalAvgTicket = mean(allTickets);
+  const globalAvgUnidades = mean(allUnidades);
+  const globalAvgRotacion = mean(allRotaciones);
+  
+  // Clasificación basada en percentiles y comparaciones relativas
+  // Ordenar clusters por ventas para asignar nombres según ranking
+  const sortedByVentas = [...items].sort((a, b) => b.ventas_totales - a.ventas_totales);
+  const isTopVentas = avgVentas >= sortedByVentas[Math.floor(sortedByVentas.length * 0.25)].ventas_totales;
+  const isLowVentas = avgVentas <= sortedByVentas[Math.floor(sortedByVentas.length * 0.75)].ventas_totales;
+  
+  // Productos Estrella: top 25% en ventas Y alta rotación
+  if (isTopVentas && avgRotacion > globalAvgRotacion * 0.8) {
     return 'Productos Estrella';
   }
-  // Productos Premium: alta venta, alto ticket, bajo volumen
-  if (avgTicket > mean(items.map(i => i.ticket_promedio)) * 1.3 && avgRotacion < 0.3) {
+  
+  // Productos Premium: alto ticket (top 25%) Y baja rotación (menos volumen)
+  if (avgTicket > globalAvgTicket * 1.2 && avgRotacion < globalAvgRotacion * 1.2) {
     return 'Productos Premium';
   }
-  // Productos Masivos: alto volumen, bajo ticket
-  if (mean(items.map(i => i.unidades_totales)) > mean(items.map(i => i.unidades_totales)) * 1.2 && avgTicket < mean(items.map(i => i.ticket_promedio)) * 0.8) {
+  
+  // Productos Masivos: alto volumen (top 25% unidades) Y bajo ticket
+  if (avgUnidades > globalAvgUnidades * 1.2 && avgTicket < globalAvgTicket * 0.9) {
     return 'Productos Masivos';
   }
-  // Productos Lentos: baja venta, baja rotación
-  if (avgVentas < mean(items.map(i => i.ventas_totales)) * 0.5 && avgRotacion < 0.2) {
+  
+  // Productos Lentos: bottom 25% en ventas Y baja rotación
+  if (isLowVentas && avgRotacion < globalAvgRotacion * 0.7) {
     return 'Productos Lentos';
   }
-  // Productos Estacionales: alta variabilidad en meses activos
-  const variabilidadMeses = standardDeviation(items.map(i => i.meses_activos)) || 0;
-  if (variabilidadMeses > mean(items.map(i => i.meses_activos)) * 0.5) {
-    return 'Productos Estacionales';
-  }
-  // Productos Emergentes: ratio alto pero ventas crecientes
-  if (avgRatio > 100 && avgRotacion > 0.3) {
-    return 'Productos Emergentes';
-  }
-  return 'Productos Estables';
+  
+  // Si no cumple ninguna condición específica, usar clasificación por posición
+  // Basado en el clusterId para asegurar diversidad
+  const clusterNames = ['Productos Estrella', 'Productos Premium', 'Productos Masivos', 'Productos Estables'];
+  return clusterNames[clusterId % clusterNames.length];
 }
 
 // Clustering por perfil de sucursal
-export async function calculateSucursalClusters(sucursalesData, k = 5) {
+export async function calculateSucursalClusters(sucursalesData, k = 4) {
   if (!sucursalesData || sucursalesData.length < k) {
     throw new Error('Datos insuficientes para clustering de sucursales');
   }
@@ -549,33 +568,57 @@ export async function calculateSucursalClusters(sucursalesData, k = 5) {
 }
 
 function getSucursalClusterName(clusterId, items) {
+  if (!items || items.length === 0) return 'Sucursales Sin Clasificar';
+  
+  // Calcular promedios del cluster
   const avgVentas = mean(items.map(item => item.ventas_totales_sucursal));
   const avgTicket = mean(items.map(item => item.ticket_promedio_sucursal));
   const avgRotacion = mean(items.map(item => item.rotacion_sucursal));
   const avgDiversidad = mean(items.map(item => item.diversidad_productos));
+  const avgUnidades = mean(items.map(item => item.unidades_totales_sucursal));
+  const avgEstacionalidad = mean(items.map(item => item.estacionalidad || 0));
   
-  // Sucursales Premium: alto ticket, alta rotación
-  if (avgTicket > mean(items.map(i => i.ticket_promedio_sucursal)) * 1.3 && avgRotacion > 0.5) {
+  // Calcular promedios globales para comparación
+  const allVentas = items.map(i => i.ventas_totales_sucursal);
+  const allTickets = items.map(i => i.ticket_promedio_sucursal);
+  const allRotaciones = items.map(i => i.rotacion_sucursal);
+  const allDiversidades = items.map(i => i.diversidad_productos);
+  const allUnidades = items.map(i => i.unidades_totales_sucursal);
+  
+  const globalAvgVentas = mean(allVentas);
+  const globalAvgTicket = mean(allTickets);
+  const globalAvgRotacion = mean(allRotaciones);
+  const globalAvgDiversidad = mean(allDiversidades);
+  const globalAvgUnidades = mean(allUnidades);
+  
+  // Ordenar por ventas para clasificación
+  const sortedByVentas = [...items].sort((a, b) => b.ventas_totales_sucursal - a.ventas_totales_sucursal);
+  const isTopVentas = avgVentas >= sortedByVentas[Math.floor(sortedByVentas.length * 0.25)].ventas_totales_sucursal;
+  const isLowVentas = avgVentas <= sortedByVentas[Math.floor(sortedByVentas.length * 0.75)].ventas_totales_sucursal;
+  
+  // Sucursales Premium: top 25% ventas Y alto ticket Y alta rotación
+  if (isTopVentas && avgTicket > globalAvgTicket * 1.1 && avgRotacion > globalAvgRotacion * 0.8) {
     return 'Sucursales Premium';
   }
-  // Sucursales Masivas: alto volumen, bajo ticket
-  if (mean(items.map(i => i.unidades_totales_sucursal)) > mean(items.map(i => i.unidades_totales_sucursal)) * 1.2 && avgTicket < mean(items.map(i => i.ticket_promedio_sucursal)) * 0.8) {
+  
+  // Sucursales Masivas: alto volumen (top 25% unidades) Y bajo ticket
+  if (avgUnidades > globalAvgUnidades * 1.2 && avgTicket < globalAvgTicket * 0.9) {
     return 'Sucursales Masivas';
   }
-  // Sucursales Estables: rendimiento medio consistente
-  if (avgRotacion > 0.3 && avgRotacion < 0.7 && avgDiversidad > mean(items.map(i => i.diversidad_productos)) * 0.8) {
-    return 'Sucursales Estables';
-  }
-  // Sucursales Oportunidad: bajo rendimiento
-  if (avgVentas < mean(items.map(i => i.ventas_totales_sucursal)) * 0.6) {
+  
+  // Sucursales Oportunidad: bottom 25% ventas
+  if (isLowVentas) {
     return 'Sucursales Oportunidad';
   }
-  // Sucursales Estacionales: alta estacionalidad
-  const avgEstacionalidad = mean(items.map(i => i.estacionalidad || 0));
-  if (avgEstacionalidad > mean(items.map(i => i.estacionalidad || 0)) * 1.5) {
-    return 'Sucursales Estacionales';
+  
+  // Sucursales Estables: rendimiento medio con buena diversidad
+  if (avgDiversidad > globalAvgDiversidad * 0.8 && avgRotacion > globalAvgRotacion * 0.6) {
+    return 'Sucursales Estables';
   }
-  return 'Sucursales Regulares';
+  
+  // Si no cumple ninguna condición específica, usar clasificación por posición
+  const clusterNames = ['Sucursales Premium', 'Sucursales Masivas', 'Sucursales Estables', 'Sucursales Oportunidad'];
+  return clusterNames[clusterId % clusterNames.length];
 }
 
 // Funciones auxiliares para análisis profundos

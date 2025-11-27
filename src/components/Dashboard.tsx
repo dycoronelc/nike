@@ -225,16 +225,6 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Clustering Temporal */}
-      <section className="section">
-        <h3 className="section-title">Análisis de Clustering - Patrones Temporales</h3>
-        {clustersLoading ? (
-          <div className="chart-loading">Calculando clusters...</div>
-        ) : (
-          clusters && <ClusterChart data={clusters} onInfoClick={() => handleInfoClick('clusterChart')} />
-        )}
-      </section>
-
       {/* Clustering de Productos */}
       <section className="section">
         <h3 className="section-title">Análisis de Clustering - Perfil de Productos</h3>
