@@ -51,9 +51,9 @@ export const indicatorsInfo: Record<string, IndicatorInfo> = {
     calculation: 'Los datos se agrupan por mes usando DATE_FORMAT(fecha, "%Y-%m") y se suman las ventas de cada mes para ambas tablas. Cada punto en el gráfico representa el total mensual de ventas.'
   },
   'predictionChart': {
-    description: 'Gráfico predictivo que muestra proyecciones futuras de ventas basadas en regresión lineal.',
-    meaning: 'Utiliza un modelo de Machine Learning (regresión lineal) para predecir las ventas futuras basándose en los datos históricos. Incluye intervalos de confianza para indicar el rango de posibles valores.',
-    calculation: 'Se aplica regresión lineal sobre los últimos 12 meses de datos históricos. El modelo calcula una línea de tendencia (y = mx + b) y proyecta 3 meses futuros. Los intervalos de confianza se calculan usando el error estándar del modelo.'
+    description: 'Gráfico predictivo que muestra proyecciones futuras de ventas basadas en un modelo Prophet-like (Estacionalidad + Tendencia).',
+    meaning: 'Utiliza un modelo de Machine Learning tipo Prophet que descompone las ventas históricas en tres componentes: tendencia, estacionalidad y residuales. El modelo captura patrones estacionales (como picos en diciembre) y proyecta 3 meses futuros con intervalos de confianza del 95%. También muestra una banda de rango histórico que indica los valores máximos y mínimos históricos (promedio ± 2 desviaciones estándar).',
+    calculation: 'El modelo Prophet-like descompone la serie temporal en: 1) Tendencia: calculada mediante regresión lineal sobre los datos históricos, 2) Estacionalidad: promedio de variaciones mensuales respecto al promedio general, 3) Predicción: suma de tendencia proyectada + componente estacional del mes correspondiente. Se incluyen features temporales como lags (1, 2, 3, 12 meses) y promedios móviles (3, 6, 12 meses). El intervalo de confianza se calcula usando el error estándar del modelo. El rango histórico muestra el promedio histórico ± 2 desviaciones estándar (aproximadamente 95% de los datos históricos).'
   },
   'clusterChart': {
     description: 'Análisis de clustering que agrupa períodos con características similares de ventas e inventario.',
