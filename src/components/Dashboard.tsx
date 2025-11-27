@@ -84,14 +84,16 @@ export default function Dashboard() {
     enabled: !!timeSeries && !!kpis,
   })
 
-  const { data: productClusters, isLoading: productClustersLoading } = useQuery({
+  const { data: productClusters, isLoading: productClustersLoading, error: productClustersError } = useQuery({
     queryKey: ['productClusters'],
     queryFn: fetchProductClusters,
+    retry: 2,
   })
 
-  const { data: sucursalClusters, isLoading: sucursalClustersLoading } = useQuery({
+  const { data: sucursalClusters, isLoading: sucursalClustersLoading, error: sucursalClustersError } = useQuery({
     queryKey: ['sucursalClusters'],
     queryFn: fetchSucursalClusters,
+    retry: 2,
   })
 
   if (kpisLoading) {
@@ -224,8 +226,12 @@ export default function Dashboard() {
         <h3 className="section-title">Análisis de Clustering - Perfil de Productos</h3>
         {productClustersLoading ? (
           <div className="chart-loading">Calculando clusters de productos...</div>
+        ) : productClustersError ? (
+          <div className="chart-loading" style={{ color: 'var(--error)' }}>
+            Error cargando clusters de productos: {productClustersError.message || 'Error desconocido'}
+          </div>
         ) : (
-          productClusters && (
+          productClusters && productClusters.caracteristicas && productClusters.caracteristicas.length > 0 ? (
             <div className="cluster-summary">
               <p className="cluster-description">
                 Se identificaron <strong>{productClusters.caracteristicas?.length || 0} perfiles distintos</strong> de productos
@@ -266,6 +272,8 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="chart-loading">No se encontraron clusters de productos</div>
           )
         )}
       </section>
@@ -275,8 +283,12 @@ export default function Dashboard() {
         <h3 className="section-title">Análisis de Clustering - Perfil de Sucursales</h3>
         {sucursalClustersLoading ? (
           <div className="chart-loading">Calculando clusters de sucursales...</div>
+        ) : sucursalClustersError ? (
+          <div className="chart-loading" style={{ color: 'var(--error)' }}>
+            Error cargando clusters de sucursales: {sucursalClustersError.message || 'Error desconocido'}
+          </div>
         ) : (
-          sucursalClusters && (
+          sucursalClusters && sucursalClusters.caracteristicas && sucursalClusters.caracteristicas.length > 0 ? (
             <div className="cluster-summary">
               <p className="cluster-description">
                 Se identificaron <strong>{sucursalClusters.caracteristicas?.length || 0} perfiles distintos</strong> de sucursales
@@ -321,6 +333,8 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="chart-loading">No se encontraron clusters de sucursales</div>
           )
         )}
       </section>

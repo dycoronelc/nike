@@ -207,11 +207,18 @@ app.get('/api/clusters/productos', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    console.log('📦 Obteniendo datos de productos para clustering...');
     const productosData = await db.getProductosForClustering();
+    console.log(`✅ Productos obtenidos: ${productosData.length}`);
+    
+    console.log('🔍 Calculando clusters de productos...');
     const clusters = await calculateProductClusters(productosData);
+    console.log(`✅ Clusters calculados: ${clusters.caracteristicas?.length || 0} clusters`);
+    
     res.json(clusters);
   } catch (error) {
-    console.error('Error calculando clusters de productos:', error);
+    console.error('❌ Error calculando clusters de productos:', error);
+    console.error(error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -222,11 +229,18 @@ app.get('/api/clusters/sucursales', async (req, res) => {
     return res.status(503).json({ error: 'Base de datos no disponible' });
   }
   try {
+    console.log('🏪 Obteniendo datos de sucursales para clustering...');
     const sucursalesData = await db.getSucursalesForClustering();
+    console.log(`✅ Sucursales obtenidas: ${sucursalesData.length}`);
+    
+    console.log('🔍 Calculando clusters de sucursales...');
     const clusters = await calculateSucursalClusters(sucursalesData);
+    console.log(`✅ Clusters calculados: ${clusters.caracteristicas?.length || 0} clusters`);
+    
     res.json(clusters);
   } catch (error) {
-    console.error('Error calculando clusters de sucursales:', error);
+    console.error('❌ Error calculando clusters de sucursales:', error);
+    console.error(error.stack);
     res.status(500).json({ error: error.message });
   }
 });
