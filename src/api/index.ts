@@ -67,3 +67,8 @@ export const fetchInventoryOptimization = async () => {
   return response.data
 }
 
+export const fetchScatterData = async () => {
+  const response = await api.get('/scatter-data')
+  return response.data
+}
+

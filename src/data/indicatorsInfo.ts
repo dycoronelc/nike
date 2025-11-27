@@ -79,6 +79,11 @@ export const indicatorsInfo: Record<string, IndicatorInfo> = {
     description: 'Porcentaje de demanda esperada que puede ser cubierta con el inventario actual, comparando con el mismo período del año anterior.',
     meaning: 'Muestra qué porcentaje de la demanda esperada (basada en el mismo período del año anterior) puede ser cubierta con el inventario actual. Un índice del 100% o más indica cobertura suficiente, entre 50-100% indica cobertura parcial, y menos de 50% indica cobertura insuficiente y necesidad de reposición.',
     calculation: 'Índice de Cobertura = (Inventario Actual / Demanda del Período Anterior) × 100. Se compara el inventario del último mes disponible con las unidades vendidas (Sell Out) del mismo mes del año anterior para considerar estacionalidad.'
+  },
+  'scatterChart': {
+    description: 'Gráfico de dispersión que muestra la relación entre ventas Sell In (a distribuidores) y ventas Sell Out (de distribuidores a usuarios finales) por sucursal.',
+    meaning: 'Este gráfico permite visualizar el balance entre lo que vendes a tus distribuidores y lo que ellos venden a los consumidores finales. Los puntos se colorean según el ratio Sell Out/Sell In: Verde (≥100%): Excelente - distribuidores venden más de lo comprado, Azul (80-100%): Buen balance, Amarillo (50-80%): Balance medio, Rojo (<50%): Atención - stock acumulado. Los puntos arriba de la línea diagonal indican que los distribuidores venden más de lo comprado (usan stock previo), en la diagonal hay balance ideal, y abajo hay stock acumulado.',
+    calculation: 'Para cada sucursal se calcula: Ventas Sell In = SUM(ventas) de tabla sell_in agrupado por nombre_sucursal. Ventas Sell Out = SUM(ventas) de tabla sell_out agrupado por nombre_sucursal. Ratio = (Ventas Sell Out / Ventas Sell In) × 100. Cada punto representa una sucursal, posicionada según sus ventas Sell In (eje X) y Sell Out (eje Y).'
   }
 }
 

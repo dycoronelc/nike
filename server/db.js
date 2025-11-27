@@ -1093,6 +1093,94 @@ export async function getInventoryOptimizationMetrics() {
   }
 }
 
+// Obtener datos para gráfico de dispersión: Sell In vs Sell Out por sucursal
+export async function getScatterDataSellInVsSellOut() {
+  try {
+    // Obtener ventas totales por sucursal en Sell In y Sell Out
+    const [scatterData] = await pool.query(`
+      SELECT 
+        COALESCE(so.nombre_sucursal, si.nombre_sucursal) as nombre_sucursal,
+        COALESCE(so.canal, si.canal) as canal,
+        COALESCE(SUM(si.ventas), 0) as ventas_sell_in,
+        COALESCE(SUM(so.ventas), 0) as ventas_sell_out,
+        COALESCE(SUM(si.unidades), 0) as unidades_sell_in,
+        COALESCE(SUM(so.cantidad), 0) as unidades_sell_out,
+        COUNT(DISTINCT si.fecha) as dias_sell_in,
+        COUNT(DISTINCT so.fecha) as dias_sell_out
+      FROM sell_out so
+      FULL OUTER JOIN sell_in si ON so.nombre_sucursal = si.nombre_sucursal
+      WHERE (so.nombre_sucursal IS NOT NULL OR si.nombre_sucursal IS NOT NULL)
+        AND (so.ventas IS NOT NULL OR si.ventas IS NOT NULL)
+      GROUP BY COALESCE(so.nombre_sucursal, si.nombre_sucursal), COALESCE(so.canal, si.canal)
+      HAVING ventas_sell_in > 0 OR ventas_sell_out > 0
+      ORDER BY (ventas_sell_in + ventas_sell_out) DESC
+    `);
+
+    // MySQL no soporta FULL OUTER JOIN, usar UNION en su lugar
+    const [scatterDataFixed] = await pool.query(`
+      SELECT 
+        nombre_sucursal,
+        canal,
+        SUM(ventas_sell_in) as ventas_sell_in,
+        SUM(ventas_sell_out) as ventas_sell_out,
+        SUM(unidades_sell_in) as unidades_sell_in,
+        SUM(unidades_sell_out) as unidades_sell_out,
+        SUM(dias_sell_in) as dias_sell_in,
+        SUM(dias_sell_out) as dias_sell_out
+      FROM (
+        SELECT 
+          nombre_sucursal,
+          canal,
+          SUM(ventas) as ventas_sell_in,
+          0 as ventas_sell_out,
+          SUM(unidades) as unidades_sell_in,
+          0 as unidades_sell_out,
+          COUNT(DISTINCT fecha) as dias_sell_in,
+          0 as dias_sell_out
+        FROM sell_in
+        WHERE nombre_sucursal IS NOT NULL AND ventas IS NOT NULL
+        GROUP BY nombre_sucursal, canal
+        
+        UNION ALL
+        
+        SELECT 
+          nombre_sucursal,
+          canal,
+          0 as ventas_sell_in,
+          SUM(ventas) as ventas_sell_out,
+          0 as unidades_sell_in,
+          SUM(cantidad) as unidades_sell_out,
+          0 as dias_sell_in,
+          COUNT(DISTINCT fecha) as dias_sell_out
+        FROM sell_out
+        WHERE nombre_sucursal IS NOT NULL AND ventas IS NOT NULL
+        GROUP BY nombre_sucursal, canal
+      ) as combined
+      GROUP BY nombre_sucursal, canal
+      HAVING ventas_sell_in > 0 OR ventas_sell_out > 0
+      ORDER BY (ventas_sell_in + ventas_sell_out) DESC
+    `);
+
+    return scatterDataFixed.map(row => ({
+      nombre_sucursal: row.nombre_sucursal || 'Sin nombre',
+      canal: row.canal || 'Sin canal',
+      ventas_sell_in: parseFloat(row.ventas_sell_in || 0),
+      ventas_sell_out: parseFloat(row.ventas_sell_out || 0),
+      unidades_sell_in: parseInt(row.unidades_sell_in || 0),
+      unidades_sell_out: parseInt(row.unidades_sell_out || 0),
+      dias_sell_in: parseInt(row.dias_sell_in || 0),
+      dias_sell_out: parseInt(row.dias_sell_out || 0),
+      // Calcular ratio para colorear puntos
+      ratio: row.ventas_sell_in > 0 
+        ? (parseFloat(row.ventas_sell_out || 0) / parseFloat(row.ventas_sell_in || 0)) * 100 
+        : 0
+    }));
+  } catch (error) {
+    console.error('Error obteniendo datos de dispersión:', error);
+    throw error;
+  }
+}
+
 // Cerrar pool de conexiones
 export async function closePool() {
   await pool.end();

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { KPICard, TimeSeriesChart, PredictionChart, InfoModal, InventoryOptimization } from './'
-import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchProductClusters, fetchSucursalClusters } from '../api'
+import { KPICard, TimeSeriesChart, PredictionChart, InfoModal, InventoryOptimization, ScatterPlotChart } from './'
+import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchProductClusters, fetchSucursalClusters, fetchScatterData } from '../api'
 import { useFilters } from '../contexts/FilterContext'
 import { indicatorsInfo } from '../data/indicatorsInfo'
 import './Dashboard.css'
@@ -40,6 +40,8 @@ export default function Dashboard() {
       title = 'Tiempo de Reposición (Lead Time)'
     } else if (key === 'indiceCobertura') {
       title = 'Índice de Cobertura de Inventario'
+    } else if (key === 'scatterChart') {
+      title = 'Gráfico de Dispersión: Sell In vs Sell Out'
     } else {
       // Para KPIs, crear título descriptivo
       const parts = key.split('-')
@@ -95,6 +97,12 @@ export default function Dashboard() {
   const { data: sucursalClusters, isLoading: sucursalClustersLoading, error: sucursalClustersError } = useQuery({
     queryKey: ['sucursalClusters'],
     queryFn: fetchSucursalClusters,
+    retry: 2,
+  })
+
+  const { data: scatterData, isLoading: scatterDataLoading, error: scatterDataError } = useQuery({
+    queryKey: ['scatterData'],
+    queryFn: fetchScatterData,
     retry: 2,
   })
 
@@ -284,6 +292,20 @@ export default function Dashboard() {
           ) : (
             <div className="chart-loading">No se encontraron clusters de productos</div>
           )
+        )}
+      </section>
+
+      {/* Gráfico de Dispersión: Sell In vs Sell Out */}
+      <section className="section">
+        <h3 className="section-title">Análisis de Balance: Sell In vs Sell Out</h3>
+        {scatterDataLoading ? (
+          <div className="chart-loading">Cargando gráfico de dispersión...</div>
+        ) : scatterDataError ? (
+          <div className="chart-loading" style={{ color: 'var(--error)' }}>
+            Error cargando datos de dispersión: {scatterDataError.message || 'Error desconocido'}
+          </div>
+        ) : (
+          scatterData && <ScatterPlotChart data={scatterData} onInfoClick={() => handleInfoClick('scatterChart')} />
         )}
       </section>
 

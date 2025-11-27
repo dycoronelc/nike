@@ -298,6 +298,32 @@ app.get('/api/clusters/sucursales', async (req, res) => {
   }
 });
 
+// Endpoint para datos de gráfico de dispersión
+app.get('/api/scatter-data', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    // Intentar obtener del cache primero
+    const cacheKey = 'scatter-data';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Datos de dispersión obtenidos del cache');
+      return res.json(cached);
+    }
+    
+    const scatterData = await db.getScatterDataSellInVsSellOut();
+    
+    // Guardar en cache por 10 minutos
+    cache.set(cacheKey, scatterData, 10 * 60 * 1000);
+    
+    res.json(scatterData);
+  } catch (error) {
+    console.error('Error obteniendo datos de dispersión:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint para métricas de optimización de inventario
 app.get('/api/inventory-optimization', async (req, res) => {
   if (!dbConnected) {
