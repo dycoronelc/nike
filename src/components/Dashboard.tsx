@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { KPICard, TimeSeriesChart, PredictionChart, ClusterChart, InfoModal } from './'
+import { KPICard, TimeSeriesChart, PredictionChart, InfoModal } from './'
 import { fetchKPIs, fetchTimeSeries, fetchPredictions, fetchProductClusters, fetchSucursalClusters } from '../api'
 import { useFilters } from '../contexts/FilterContext'
 import { indicatorsInfo } from '../data/indicatorsInfo'
