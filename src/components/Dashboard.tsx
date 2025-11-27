@@ -301,55 +301,53 @@ export default function Dashboard() {
           <div className="chart-loading" style={{ color: 'var(--error)' }}>
             Error cargando clusters de sucursales: {sucursalClustersError.message || 'Error desconocido'}
           </div>
-        ) : sucursalClusters ? (
-          sucursalClusters.caracteristicas && sucursalClusters.caracteristicas.length > 0 ? (
-            <div className="cluster-summary">
-              <p className="cluster-description">
-                Se identificaron <strong>{sucursalClusters.caracteristicas?.length || 0} perfiles distintos</strong> de sucursales
-              </p>
-              <div className="clusters-grid">
-                {sucursalClusters.caracteristicas?.map((cluster: any) => (
-                  <div key={cluster.cluster} className="cluster-card">
-                    <h4>{cluster.nombre}</h4>
-                    <div className="cluster-stats">
-                      <div className="stat">
-                        <span className="stat-label">Sucursales:</span>
-                        <span className="stat-value">{cluster.cantidad}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Ventas Promedio:</span>
-                        <span className="stat-value">${cluster.promedioVentas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Ticket Promedio:</span>
-                        <span className="stat-value">${cluster.promedioTicket?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Diversidad:</span>
-                        <span className="stat-value">{cluster.promedioDiversidad?.toFixed(0)} productos</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-label">Rotación:</span>
-                        <span className="stat-value">{cluster.promedioRotacion?.toFixed(2)}</span>
-                      </div>
+        ) : sucursalClusters && sucursalClusters.caracteristicas && sucursalClusters.caracteristicas.length > 0 ? (
+          <div className="cluster-summary">
+            <p className="cluster-description">
+              Se identificaron <strong>{sucursalClusters.caracteristicas?.length || 0} perfiles distintos</strong> de sucursales
+            </p>
+            <div className="clusters-grid">
+              {sucursalClusters.caracteristicas?.map((cluster: any) => (
+                <div key={cluster.cluster} className="cluster-card">
+                  <h4>{cluster.nombre}</h4>
+                  <div className="cluster-stats">
+                    <div className="stat">
+                      <span className="stat-label">Sucursales:</span>
+                      <span className="stat-value">{cluster.cantidad}</span>
                     </div>
-                    {cluster.sucursales && cluster.sucursales.length > 0 && (
-                      <div className="cluster-top-items">
-                        <strong>Top Sucursales:</strong>
-                        <ul>
-                          {cluster.sucursales.slice(0, 5).map((sucursal: any, idx: number) => (
-                            <li key={idx}>{sucursal.nombre} ({sucursal.canal}) - ${sucursal.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <div className="stat">
+                      <span className="stat-label">Ventas Promedio:</span>
+                      <span className="stat-value">${cluster.promedioVentas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-label">Ticket Promedio:</span>
+                      <span className="stat-value">${cluster.promedioTicket?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-label">Diversidad:</span>
+                      <span className="stat-value">{cluster.promedioDiversidad?.toFixed(0)} productos</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-label">Rotación:</span>
+                      <span className="stat-value">{cluster.promedioRotacion?.toFixed(2)}</span>
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {cluster.sucursales && cluster.sucursales.length > 0 && (
+                    <div className="cluster-top-items">
+                      <strong>Top Sucursales:</strong>
+                      <ul>
+                        {cluster.sucursales.slice(0, 5).map((sucursal: any, idx: number) => (
+                          <li key={idx}>{sucursal.nombre} ({sucursal.canal}) - ${sucursal.ventas?.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="chart-loading">No se encontraron clusters de sucursales</div>
-          )
+          </div>
+        ) : (
+          <div className="chart-loading">No se encontraron clusters de sucursales</div>
         )}
       </section>
 
