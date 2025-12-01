@@ -332,34 +332,75 @@ Respuesta Generativa + Gráficos
 
 ---
 
-### **OPCIÓN 3: Integración con Anthropic Claude**
+### **OPCIÓN 3: Integración con Anthropic Claude** ⭐ (RECOMENDADA)
 
 **Características:**
-- **Modelo:** Claude 3 Sonnet o Opus
-- **Ventajas:** Excelente para análisis complejos, respuestas más largas
-- **Costo:** Similar a GPT-4
+- **Modelos Disponibles:**
+  - **Claude Haiku 4.5**: Modelo rápido y económico, ideal para tareas simples
+  - **Claude Sonnet 4.5**: Equilibrio entre rendimiento y costo, recomendado para uso general
+  - **Claude Opus 4.5**: Modelo más avanzado, para análisis complejos
+- **Ventajas:** 
+  - Excelente para análisis complejos y razonamiento
+  - Respuestas más largas y detalladas
+  - Excelente comprensión de contexto
+  - Descuentos por caché y procesamiento por lotes (hasta 50% de descuento)
 
-**Estimación:** ~$0.03 por 1K tokens
-- 1000 consultas/mes = ~$30/mes
+**Precios por Millón de Tokens:**
+
+| Modelo | Input (por 1M tokens) | Output (por 1M tokens) |
+|--------|------------------------|------------------------|
+| **Claude Haiku 4.5** | $1.00 | $5.00 |
+| **Claude Sonnet 4.5** | $3.00 | $15.00 |
+| **Claude Opus 4.5** | $5.00 | $25.00 |
+
+**Cálculo de Costos (Consulta Promedio: 500 tokens input + 300 tokens output):**
+
+| Volumen Mensual | Claude Haiku | Claude Sonnet | Claude Opus |
+|-----------------|--------------|---------------|-------------|
+| **500 consultas** | $1.00/mes | $3.00/mes | $5.00/mes |
+| **1,000 consultas** | $2.00/mes | $6.00/mes | $10.00/mes |
+| **2,500 consultas** | $5.00/mes | $15.00/mes | $25.00/mes |
+| **5,000 consultas** | $10.00/mes | $30.00/mes | $50.00/mes |
+| **10,000 consultas** | $20.00/mes | $60.00/mes | $100.00/mes |
+
+**Descuentos Disponibles:**
+- **Caché de Prompts**: Reutilización de prompts a costo reducido
+- **Procesamiento por Lotes**: 50% de descuento en tokens para tareas asincrónicas
+- **Con caché y lotes**: Costos pueden reducirse hasta 50-70%
+
+**Recomendación:** 
+- **Inicio:** Claude Sonnet 4.5 (mejor balance costo/rendimiento)
+- **Alto Volumen:** Claude Haiku 4.5 (más económico)
+- **Análisis Complejos:** Claude Opus 4.5 (máxima precisión)
 
 ---
 
-### **OPCIÓN 4: Modelo Híbrido Avanzado** (Mejor Opción)
+### **OPCIÓN 4: Modelo Híbrido Avanzado con Claude** (Mejor Opción) ⭐
 
 **Arquitectura:**
 1. **Análisis Inicial:** Sistema actual (reglas + ML local) para consultas simples
-2. **Escalado a IA:** OpenAI/Gemini para consultas complejas o cuando no se detecta intención clara
-3. **Enriquecimiento:** IA genera insights adicionales basándose en resultados ML
+2. **Escalado a IA:** Claude Sonnet para consultas complejas o cuando no se detecta intención clara
+3. **Enriquecimiento:** Claude genera insights adicionales basándose en resultados ML
 
 **Ventajas:**
 - ✅ Mejor costo-beneficio (solo usa IA cuando es necesario)
 - ✅ Mantiene velocidad para consultas simples
 - ✅ Flexibilidad para consultas complejas
 - ✅ Costo optimizado
+- ✅ Excelente razonamiento con Claude
 
-**Costo Estimado:** 
-- 70% consultas simples (gratis) + 30% consultas complejas (IA)
-- 1000 consultas/mes = ~$12-15/mes (con GPT-3.5)
+**Costo Estimado (70% consultas simples + 30% consultas complejas):**
+
+| Volumen Total | Consultas IA | Claude Haiku | Claude Sonnet | Claude Opus |
+|---------------|--------------|--------------|---------------|-------------|
+| **1,000 consultas/mes** | 300 consultas | $0.60/mes | $1.80/mes | $3.00/mes |
+| **2,500 consultas/mes** | 750 consultas | $1.50/mes | $4.50/mes | $7.50/mes |
+| **5,000 consultas/mes** | 1,500 consultas | $3.00/mes | $9.00/mes | $15.00/mes |
+| **10,000 consultas/mes** | 3,000 consultas | $6.00/mes | $18.00/mes | $30.00/mes |
+
+**Recomendación:** Modelo Híbrido con Claude Sonnet 4.5
+- Balance perfecto entre costo y funcionalidad
+- Costo estimado: $1.80 - $18/mes según volumen
 
 ---
 
@@ -380,15 +421,17 @@ Respuesta Generativa + Gráficos
 - **Capacidades:** Mayor precisión, mejor razonamiento
 - **ROI:** Medio-Alto - solo si se requiere alta precisión
 
-### **Opción 3: Google Gemini**
-- **Costo mensual:** ~$0.50 - $5 (según volumen)
-- **Capacidades:** Excelente con datos estructurados
-- **ROI:** Muy Alto - mejor relación costo-beneficio
+### **Opción 3: Anthropic Claude**
+- **Claude Haiku:** $1 - $20/mes (según volumen)
+- **Claude Sonnet:** $3 - $60/mes (según volumen) ⭐ **RECOMENDADO**
+- **Claude Opus:** $5 - $100/mes (según volumen)
+- **Capacidades:** Excelente para análisis complejos, razonamiento superior
+- **ROI:** Muy Alto - mejor relación costo-beneficio para análisis de datos
 
-### **Opción 4: Modelo Híbrido**
-- **Costo mensual:** ~$12 - $50 (según volumen y % de uso IA)
+### **Opción 4: Modelo Híbrido con Claude**
+- **Costo mensual:** $0.60 - $30/mes (según volumen y modelo Claude)
 - **Capacidades:** Balance perfecto entre costo y funcionalidad
-- **ROI:** Óptimo - mejor solución
+- **ROI:** Óptimo - mejor solución recomendada
 
 ---
 
@@ -402,12 +445,14 @@ Respuesta Generativa + Gráficos
 - ✅ Adecuado para producción y demostración al cliente
 
 **Fase 2 (Producción - Mejora):**
-- 🚀 Implementar **Modelo Híbrido con Google Gemini Pro**
+- 🚀 Implementar **Modelo Híbrido con Claude Sonnet 4.5** ⭐
 - 🎯 Motivos:
-  1. **Costo óptimo:** $0.50 - $5/mes (muy competitivo)
-  2. **Excelente con datos estructurados:** Ideal para dashboards
-  3. **API estable y confiable:** Google Cloud Platform
-  4. **Flexibilidad:** Fácil migración a otros modelos si es necesario
+  1. **Costo óptimo:** $1.80 - $18/mes (modelo híbrido, muy competitivo)
+  2. **Excelente razonamiento:** Ideal para análisis complejos de datos
+  3. **Respuestas detalladas:** Mejor comprensión de contexto empresarial
+  4. **Descuentos disponibles:** Caché y procesamiento por lotes (hasta 50% descuento)
+  5. **API estable y confiable:** Anthropic Platform
+  6. **Flexibilidad:** Fácil escalado a Claude Opus si se requiere mayor precisión
 
 **Fase 3 (Escalado - Avanzado):**
 - Si el volumen crece significativamente (>10K consultas/mes):
@@ -697,7 +742,18 @@ Respuesta Generativa + Gráficos
 - **Dominio:** $10 - $15 USD/año
 - **SSL Certificate:** Incluido en hosting
 
-**Servicios de IA (Fase 2):**
+**Servicios de IA (Fase 2) - Anthropic Claude:** ⭐
+- **Claude Haiku 4.5:** $1 - $20 USD/mes (según volumen)
+  - 500 consultas: $1/mes | 1,000: $2/mes | 5,000: $10/mes | 10,000: $20/mes
+- **Claude Sonnet 4.5 (Recomendado):** $3 - $60 USD/mes (según volumen)
+  - 500 consultas: $3/mes | 1,000: $6/mes | 5,000: $30/mes | 10,000: $60/mes
+- **Claude Opus 4.5:** $5 - $100 USD/mes (según volumen)
+  - 500 consultas: $5/mes | 1,000: $10/mes | 5,000: $50/mes | 10,000: $100/mes
+- **Modelo Híbrido (70% simples + 30% IA):** $0.60 - $30 USD/mes
+  - 1,000 consultas totales: $1.80/mes (Sonnet) | 5,000: $9/mes | 10,000: $18/mes
+- **Descuentos disponibles:** Caché y procesamiento por lotes (hasta 50% descuento)
+
+**Otras Opciones de IA (Alternativas):**
 - **Google Gemini Pro:** $0.50 - $5 USD/mes (según uso)
 - **OpenAI GPT-3.5:** $1.60 - $15 USD/mes (según uso)
 - **OpenAI GPT-4:** $40 - $400 USD/mes (según uso)
@@ -721,7 +777,15 @@ Respuesta Generativa + Gráficos
 - **Hosting:** $20 - $50 USD/mes
 - **Base de Datos:** $15 - $30 USD/mes
 - **Mantenimiento (si aplica):** $800 - $1,200 USD/mes
-- **IA Generativa (Fase 2):** $0.50 - $400 USD/mes (según modelo y uso)
+- **IA Generativa - Claude (Fase 2):** ⭐
+  - **Modelo Híbrido con Claude Sonnet (Recomendado):** $1.80 - $18 USD/mes
+    - 1,000 consultas/mes: $1.80/mes
+    - 5,000 consultas/mes: $9/mes
+    - 10,000 consultas/mes: $18/mes
+  - **Claude Sonnet Directo:** $3 - $60 USD/mes (según volumen)
+  - **Claude Haiku (Económico):** $1 - $20 USD/mes
+  - **Claude Opus (Avanzado):** $5 - $100 USD/mes
+  - **Con descuentos (caché/lotes):** Hasta 50% de reducción
 
 ### **Desarrollo Futuro (Fase 2 y 3):**
 - **Fase 2 (Mejoras):** $3,000 - $5,000 USD (15-21 días)
@@ -740,11 +804,12 @@ El sistema implementado utiliza algoritmos de Machine Learning locales (modelo P
 - ✅ Sistema completo funcional en producción
 
 ### **Propuesta de Mejora:**
-Integración con IA generativa (Google Gemini Pro recomendado) para:
-- ✅ Comprensión natural del lenguaje
-- ✅ Respuestas más conversacionales
-- ✅ Capacidad de responder preguntas complejas
-- ✅ Costo muy competitivo (~$0.50 - $5/mes)
+Integración con IA generativa **Claude Sonnet 4.5 (Recomendado)** para:
+- ✅ Comprensión natural del lenguaje y excelente razonamiento
+- ✅ Respuestas más conversacionales y detalladas
+- ✅ Capacidad de responder preguntas complejas sobre datos
+- ✅ Costo muy competitivo: **$1.80 - $18/mes** (modelo híbrido)
+- ✅ Descuentos disponibles: Caché y procesamiento por lotes (hasta 50%)
 
 ### **Valor Agregado:**
 - ✅ **Costo mínimo:** Algoritmos ML locales = $0
