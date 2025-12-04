@@ -17,18 +17,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Verificar si hay sesión guardada en localStorage
-    const savedUser = localStorage.getItem('nike_user')
-    if (savedUser) {
-      try {
-        return JSON.parse(savedUser)
-      } catch {
-        return null
-      }
-    }
-    return null
-  })
+  // Siempre iniciar sin usuario para forzar login en cada sesión
+  const [user, setUser] = useState<User | null>(null)
 
   const login = (username: string, password: string, role: UserRole): boolean => {
     // La autenticación se hace en el backend, aquí solo guardamos el usuario autenticado
