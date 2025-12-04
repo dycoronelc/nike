@@ -27,7 +27,6 @@ export default function DashboardComercial() {
     <div className="dashboard-comercial">
       <div className="comercial-header">
         <h1>Dashboard Comercial</h1>
-        <p>Vista ejecutiva de ventas y rendimiento</p>
       </div>
 
       {/* KPIs */}
@@ -55,11 +54,7 @@ export default function DashboardComercial() {
       </div>
 
       {/* Chatbot */}
-      <div className="chatbot-section">
-        <div className="chatbot-header-section">
-          <h2>Asistente de IA</h2>
-          <p>Pregunta directamente qué información quisieras visualizar</p>
-        </div>
+      <div className="chatbot-section">        
         <div className="chatbot-wrapper">
           <Chatbot />
         </div>
