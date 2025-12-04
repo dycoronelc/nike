@@ -46,8 +46,8 @@ export default function Login() {
           <div className="login-logo">
             <div className="logo-icon">✓</div>
             <div className="logo-text">
-              <h1>Northbay International Inc.</h1>
-              <p>Dashboard de Ventas y Inventario</p>
+              <h1>Northbay International</h1>
+              <p>Dashboard de Ventas e Inventario</p>
             </div>
           </div>
         </div>
