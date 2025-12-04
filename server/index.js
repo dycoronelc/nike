@@ -433,6 +433,71 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Endpoint para top productos
+app.get('/api/top-productos', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const productos = await db.getTopProductos(limit);
+    res.json(productos);
+  } catch (error) {
+    console.error('Error obteniendo top productos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para top sucursales
+app.get('/api/top-sucursales', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const sucursales = await db.getTopSucursales(limit);
+    res.json(sucursales);
+  } catch (error) {
+    console.error('Error obteniendo top sucursales:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint de login
+app.post('/api/login', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+    }
+    
+    const user = await db.authenticateUser(username, password);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    
+    // Retornar información del usuario (sin la contraseña)
+    res.json({
+      success: true,
+      user: {
+        username: user.username,
+        role: user.role,
+        nombreCompleto: user.nombreCompleto,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
   // Invalidar cache de clusters al iniciar para forzar recálculo con código nuevo

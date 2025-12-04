@@ -12,4 +12,6 @@ export { default as InfoModal } from './InfoModal'
 export { default as InventoryOptimization } from './InventoryOptimization'
 export { default as ScatterPlotChart } from './ScatterPlotChart'
 export { default as ClusterCard } from './ClusterCard'
+export { default as Login } from './Login'
+export { default as DashboardComercial } from './DashboardComercial'
 

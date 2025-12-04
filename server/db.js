@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import { standardDeviation } from 'simple-statistics';
+import crypto from 'crypto';
 
 // Configuración de la base de datos
 const dbConfig = {
@@ -314,6 +315,58 @@ export async function getProductosData() {
     }));
   } catch (error) {
     console.error('Error obteniendo datos de productos:', error);
+    throw error;
+  }
+}
+
+// Obtener top productos más vendidos
+export async function getTopProductos(limit = 3) {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        silueta as nombre,
+        SUM(ventas) as ventas,
+        SUM(cantidad) as cantidad
+      FROM sell_out
+      WHERE silueta IS NOT NULL
+      GROUP BY silueta
+      ORDER BY ventas DESC
+      LIMIT ?
+    `, [limit]);
+
+    return rows.map(row => ({
+      nombre: row.nombre,
+      ventas: parseFloat(row.ventas || 0),
+      cantidad: parseInt(row.cantidad || 0)
+    }));
+  } catch (error) {
+    console.error('Error obteniendo top productos:', error);
+    throw error;
+  }
+}
+
+// Obtener top sucursales que más venden
+export async function getTopSucursales(limit = 3) {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        nombre_sucursal as nombre,
+        SUM(ventas) as ventas,
+        SUM(cantidad) as cantidad
+      FROM sell_out
+      WHERE nombre_sucursal IS NOT NULL
+      GROUP BY nombre_sucursal
+      ORDER BY ventas DESC
+      LIMIT ?
+    `, [limit]);
+
+    return rows.map(row => ({
+      nombre: row.nombre,
+      ventas: parseFloat(row.ventas || 0),
+      cantidad: parseInt(row.cantidad || 0)
+    }));
+  } catch (error) {
+    console.error('Error obteniendo top sucursales:', error);
     throw error;
   }
 }
@@ -1167,6 +1220,62 @@ export async function getScatterDataSellInVsSellOut() {
 // Cerrar pool de conexiones
 export async function closePool() {
   await pool.end();
+}
+
+// Función para hashear contraseña (hash simple, en producción usar bcrypt)
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+// Autenticar usuario
+export async function authenticateUser(username, password) {
+  try {
+    const passwordHash = hashPassword(password);
+    const [rows] = await pool.query(
+      'SELECT id, username, rol, nombre_completo, email, activo FROM usuarios WHERE username = ? AND password = ? AND activo = TRUE',
+      [username, passwordHash]
+    );
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    return {
+      id: rows[0].id,
+      username: rows[0].username,
+      role: rows[0].rol,
+      nombreCompleto: rows[0].nombre_completo,
+      email: rows[0].email
+    };
+  } catch (error) {
+    console.error('Error autenticando usuario:', error);
+    throw error;
+  }
+}
+
+// Obtener usuario por username
+export async function getUserByUsername(username) {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, username, rol, nombre_completo, email, activo FROM usuarios WHERE username = ? AND activo = TRUE',
+      [username]
+    );
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    return {
+      id: rows[0].id,
+      username: rows[0].username,
+      role: rows[0].rol,
+      nombreCompleto: rows[0].nombre_completo,
+      email: rows[0].email
+    };
+  } catch (error) {
+    console.error('Error obteniendo usuario:', error);
+    throw error;
+  }
 }
 
 export default pool;

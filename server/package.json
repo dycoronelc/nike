@@ -6,6 +6,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "init-db": "node init-db.js",
+    "create-users": "node create-users.js",
     "export-db": "node export-db.js",
     "import-sql": "node import-sql.js"
   },

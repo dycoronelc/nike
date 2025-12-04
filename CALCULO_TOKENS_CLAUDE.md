@@ -493,3 +493,5 @@ Asumiendo distribución típica de consultas:
 *Documento generado para Northbay International Inc. - Dashboard Nike*
 *Fecha: Diciembre 2024*
 
+
+

@@ -72,3 +72,18 @@ export const fetchScatterData = async () => {
   return response.data
 }
 
+export const fetchTopProductos = async (limit = 3) => {
+  const response = await api.get('/top-productos', { params: { limit } })
+  return response.data
+}
+
+export const fetchTopSucursales = async (limit = 3) => {
+  const response = await api.get('/top-sucursales', { params: { limit } })
+  return response.data
+}
+
+export const login = async (username: string, password: string) => {
+  const response = await api.post('/login', { username, password })
+  return response.data
+}
+
