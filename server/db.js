@@ -1231,15 +1231,40 @@ function hashPassword(password) {
 export async function authenticateUser(username, password) {
   try {
     const passwordHash = hashPassword(password);
+    
+    // Debug: verificar si el usuario existe
+    const [userCheck] = await pool.query(
+      'SELECT id, username, password, rol, activo FROM usuarios WHERE username = ?',
+      [username]
+    );
+    
+    if (userCheck.length === 0) {
+      console.log(`❌ Usuario "${username}" no encontrado en la base de datos`);
+      return null;
+    }
+    
+    console.log(`🔍 Usuario encontrado: ${username}, activo: ${userCheck[0].activo}`);
+    console.log(`🔍 Hash esperado: ${userCheck[0].password}`);
+    console.log(`🔍 Hash recibido: ${passwordHash}`);
+    
     const [rows] = await pool.query(
       'SELECT id, username, rol, nombre_completo, email, activo FROM usuarios WHERE username = ? AND password = ? AND activo = TRUE',
       [username, passwordHash]
     );
     
     if (rows.length === 0) {
+      console.log(`❌ Autenticación fallida para usuario "${username}"`);
+      // Verificar si el problema es el hash o el estado activo
+      if (userCheck[0].password !== passwordHash) {
+        console.log(`❌ Las contraseñas no coinciden`);
+      }
+      if (!userCheck[0].activo) {
+        console.log(`❌ El usuario está inactivo`);
+      }
       return null;
     }
     
+    console.log(`✅ Autenticación exitosa para usuario "${username}"`);
     return {
       id: rows[0].id,
       username: rows[0].username,
@@ -1318,6 +1343,7 @@ export async function initializeUsersTable() {
         console.log('📝 Creando usuarios de prueba...');
         
         const passwordHash = hashPassword('password123');
+        console.log(`🔑 Hash de contraseña generado: ${passwordHash}`);
         
         await pool.query(`
           INSERT INTO usuarios (username, password, rol, nombre_completo, email) VALUES
@@ -1328,6 +1354,18 @@ export async function initializeUsersTable() {
         console.log('✅ Usuarios de prueba creados:');
         console.log('   - Usuario: analista / Contraseña: password123 / Rol: analista');
         console.log('   - Usuario: comercial / Contraseña: password123 / Rol: comercial');
+        console.log(`   - Hash usado: ${passwordHash}`);
+      } else {
+        // Verificar que los usuarios existentes tengan el hash correcto
+        console.log('🔍 Verificando usuarios existentes...');
+        const [existingUsers] = await pool.query('SELECT username, password FROM usuarios');
+        const expectedHash = hashPassword('password123');
+        for (const user of existingUsers) {
+          if (user.password !== expectedHash) {
+            console.log(`⚠️  Actualizando hash para usuario ${user.username}...`);
+            await pool.query('UPDATE usuarios SET password = ? WHERE username = ?', [expectedHash, user.username]);
+          }
+        }
       }
     } else {
       // Verificar si hay usuarios, si no, crear los de prueba
@@ -1351,6 +1389,11 @@ export async function initializeUsersTable() {
     console.error('❌ Error inicializando tabla de usuarios:', error.message);
     // No lanzar error para no bloquear el inicio del servidor
   }
+}
+
+// Exportar función para obtener el pool (para uso en otros módulos)
+export function getPool() {
+  return pool;
 }
 
 export default pool;

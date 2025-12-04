@@ -465,6 +465,36 @@ app.get('/api/top-sucursales', async (req, res) => {
   }
 });
 
+// Endpoint de diagnóstico de usuarios (solo para desarrollo)
+app.get('/api/users/debug', async (req, res) => {
+  if (!dbConnected) {
+    return res.status(503).json({ error: 'Base de datos no disponible' });
+  }
+  
+  try {
+    // Inicializar tabla si no existe
+    await db.initializeUsersTable();
+    
+    // Obtener todos los usuarios (sin contraseñas)
+    const pool = getPool();
+    const [users] = await pool.query(`
+      SELECT id, username, rol, nombre_completo, email, activo, 
+             LENGTH(password) as password_length,
+             fecha_creacion
+      FROM usuarios
+    `);
+    
+    res.json({
+      success: true,
+      count: users.length,
+      users: users
+    });
+  } catch (error) {
+    console.error('Error en debug de usuarios:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint de login
 app.post('/api/login', async (req, res) => {
   if (!dbConnected) {
@@ -473,6 +503,8 @@ app.post('/api/login', async (req, res) => {
   
   try {
     const { username, password } = req.body;
+    
+    console.log(`🔐 Intento de login - Usuario: ${username}`);
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
@@ -488,8 +520,11 @@ app.post('/api/login', async (req, res) => {
     const user = await db.authenticateUser(username, password);
     
     if (!user) {
+      console.log(`❌ Login fallido para usuario: ${username}`);
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
+    
+    console.log(`✅ Login exitoso para usuario: ${username}, rol: ${user.role}`);
     
     // Retornar información del usuario (sin la contraseña)
     res.json({
