@@ -164,10 +164,11 @@
 
 .main {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {

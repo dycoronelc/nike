@@ -33,9 +33,15 @@
 }
 
 .kpis-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1rem;
+  width: 100%;
+}
+
+.kpis-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .chart-loading,
@@ -195,9 +201,16 @@
   opacity: 0.8;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 1201px) {
   .kpis-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 769px) {
+  .kpis-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem;
   }
 }
 

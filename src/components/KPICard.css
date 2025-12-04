@@ -2,8 +2,11 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   transition: transform 0.2s, box-shadow 0.2s;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .kpi-card:hover {
