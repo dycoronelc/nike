@@ -27,6 +27,8 @@ const initDatabase = async () => {
     dbConnected = await testConnection();
     if (dbConnected) {
       console.log('✅ Conexión a MySQL establecida');
+      // Inicializar tabla de usuarios si no existe
+      await db.initializeUsersTable();
     } else {
       console.error('❌ No se pudo conectar a MySQL. Verifica la configuración.');
     }
@@ -474,6 +476,13 @@ app.post('/api/login', async (req, res) => {
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+    }
+    
+    // Intentar inicializar tabla si no existe (por si acaso)
+    try {
+      await db.initializeUsersTable();
+    } catch (initError) {
+      console.error('Error inicializando tabla de usuarios:', initError.message);
     }
     
     const user = await db.authenticateUser(username, password);

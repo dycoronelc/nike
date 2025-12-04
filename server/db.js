@@ -1278,5 +1278,80 @@ export async function getUserByUsername(username) {
   }
 }
 
+// Inicializar tabla de usuarios si no existe
+export async function initializeUsersTable() {
+  try {
+    // Verificar si la tabla existe
+    const [tables] = await pool.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = DATABASE() 
+      AND table_name = 'usuarios'
+    `);
+    
+    if (tables[0].count === 0) {
+      console.log('📋 Creando tabla de usuarios...');
+      
+      // Crear tabla
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS usuarios (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          username VARCHAR(100) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL,
+          rol ENUM('analista', 'comercial') NOT NULL,
+          nombre_completo VARCHAR(200),
+          email VARCHAR(200),
+          activo BOOLEAN DEFAULT TRUE,
+          fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_username (username),
+          INDEX idx_rol (rol)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      
+      console.log('✅ Tabla de usuarios creada');
+      
+      // Verificar si hay usuarios
+      const [userCount] = await pool.query('SELECT COUNT(*) as count FROM usuarios');
+      
+      if (userCount[0].count === 0) {
+        console.log('📝 Creando usuarios de prueba...');
+        
+        const passwordHash = hashPassword('password123');
+        
+        await pool.query(`
+          INSERT INTO usuarios (username, password, rol, nombre_completo, email) VALUES
+          (?, ?, 'analista', 'Usuario Analista', 'analista@nike.com'),
+          (?, ?, 'comercial', 'Usuario Comercial', 'comercial@nike.com')
+        `, ['analista', passwordHash, 'comercial', passwordHash]);
+        
+        console.log('✅ Usuarios de prueba creados:');
+        console.log('   - Usuario: analista / Contraseña: password123 / Rol: analista');
+        console.log('   - Usuario: comercial / Contraseña: password123 / Rol: comercial');
+      }
+    } else {
+      // Verificar si hay usuarios, si no, crear los de prueba
+      const [userCount] = await pool.query('SELECT COUNT(*) as count FROM usuarios');
+      
+      if (userCount[0].count === 0) {
+        console.log('📝 Creando usuarios de prueba...');
+        
+        const passwordHash = hashPassword('password123');
+        
+        await pool.query(`
+          INSERT INTO usuarios (username, password, rol, nombre_completo, email) VALUES
+          (?, ?, 'analista', 'Usuario Analista', 'analista@nike.com'),
+          (?, ?, 'comercial', 'Usuario Comercial', 'comercial@nike.com')
+        `, ['analista', passwordHash, 'comercial', passwordHash]);
+        
+        console.log('✅ Usuarios de prueba creados');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error inicializando tabla de usuarios:', error.message);
+    // No lanzar error para no bloquear el inicio del servidor
+  }
+}
+
 export default pool;
 
