@@ -5,7 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import { predictSales, calculateClusters, calculateProductClusters, calculateSucursalClusters, analyzeQuery } from './ml-service.js';
 import * as db from './db.js';
-import { testConnection } from './db.js';
+import { testConnection, getPool } from './db.js';
 import * as cache from './cache.js';
 
 // Cargar variables de entorno desde la raíz del proyecto
