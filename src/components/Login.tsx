@@ -46,8 +46,8 @@ export default function Login() {
           <div className="login-logo">
             <div className="logo-icon">✓</div>
             <div className="logo-text">
-              <h1>Nike Dashboard</h1>
-              <p>Northbay International Inc.</p>
+              <h1>Northbay International Inc.</h1>
+              <p>Dashboard de Ventas y Inventario</p>
             </div>
           </div>
         </div>
@@ -95,6 +95,8 @@ export default function Login() {
 
         <div className="login-footer">
           <p>Ingresa tus credenciales para acceder al dashboard</p>
+          <p>Usuario analista: analista / password123 </p>
+          <p>Usuario comercial: comercial / password123</p>
         </div>
       </div>
     </div>
