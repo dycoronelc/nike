@@ -1,9 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchKPIs, fetchTopProductos, fetchTopSucursales, sendChatMessage } from '../api'
+import { fetchKPIs, fetchTopProductos, fetchTopSucursales } from '../api'
 import { KPICard } from './'
 import Chatbot from './Chatbot'
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart } from 'lucide-react'
 import './DashboardComercial.css'
+
+interface TopItem {
+  nombre: string
+  ventas: number
+  cantidad: number
+}
 
 export default function DashboardComercial() {
   const { data: kpis, isLoading: kpisLoading } = useQuery({
@@ -11,14 +16,14 @@ export default function DashboardComercial() {
     queryFn: () => fetchKPIs(),
   })
 
-  const { data: topProductos, isLoading: productosLoading } = useQuery({
+  const { data: topProductos, isLoading: productosLoading } = useQuery<TopItem[]>({
     queryKey: ['topProductos'],
-    queryFn: fetchTopProductos,
+    queryFn: () => fetchTopProductos(3),
   })
 
-  const { data: topSucursales, isLoading: sucursalesLoading } = useQuery({
+  const { data: topSucursales, isLoading: sucursalesLoading } = useQuery<TopItem[]>({
     queryKey: ['topSucursales'],
-    queryFn: fetchTopSucursales,
+    queryFn: () => fetchTopSucursales(3),
   })
 
   if (kpisLoading) {
@@ -47,29 +52,21 @@ export default function DashboardComercial() {
           title="Sell In Total"
           value={sellInTotal}
           format="currency"
-          icon={<DollarSign size={24} />}
-          trend={null}
         />
         <KPICard
           title="Sell Out Total"
           value={sellOutTotal}
           format="currency"
-          icon={<ShoppingCart size={24} />}
-          trend={null}
         />
         <KPICard
           title="Promedio Ticket Sell In"
           value={ticketSellIn}
           format="currency"
-          icon={<TrendingUp size={24} />}
-          trend={null}
         />
         <KPICard
           title="Promedio Ticket Sell Out"
           value={ticketSellOut}
           format="currency"
-          icon={<TrendingDown size={24} />}
-          trend={null}
         />
       </div>
 
@@ -79,9 +76,9 @@ export default function DashboardComercial() {
           <h2>Top 3 Productos Más Vendidos</h2>
           {productosLoading ? (
             <div className="loading-small">Cargando...</div>
-          ) : topProductos && topProductos.length > 0 ? (
+          ) : topProductos && Array.isArray(topProductos) && topProductos.length > 0 ? (
             <div className="top-list">
-              {topProductos.slice(0, 3).map((producto: any, index: number) => (
+              {topProductos.slice(0, 3).map((producto: TopItem, index: number) => (
                 <div key={index} className="top-item">
                   <div className="top-item-rank">{index + 1}</div>
                   <div className="top-item-content">
@@ -102,9 +99,9 @@ export default function DashboardComercial() {
           <h2>Top 3 Sucursales que Más Venden</h2>
           {sucursalesLoading ? (
             <div className="loading-small">Cargando...</div>
-          ) : topSucursales && topSucursales.length > 0 ? (
+          ) : topSucursales && Array.isArray(topSucursales) && topSucursales.length > 0 ? (
             <div className="top-list">
-              {topSucursales.slice(0, 3).map((sucursal: any, index: number) => (
+              {topSucursales.slice(0, 3).map((sucursal: TopItem, index: number) => (
                 <div key={index} className="top-item">
                   <div className="top-item-rank">{index + 1}</div>
                   <div className="top-item-content">
