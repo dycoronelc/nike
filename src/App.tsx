@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ThemeProvider } from './contexts/ThemeContext'
+import { useState, useEffect } from 'react'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { FilterProvider } from './contexts/FilterContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Layout, Dashboard, DashboardComercial, Login } from './components'
@@ -8,6 +8,14 @@ import './App.css'
 function AppContent() {
   const { isAuthenticated, user } = useAuth()
   const [activeView, setActiveView] = useState<'dashboard' | 'chatbot'>('dashboard')
+  const { forceTheme } = useTheme()
+
+  // Forzar tema claro para comerciales
+  useEffect(() => {
+    if (user?.role === 'comercial') {
+      forceTheme?.('light')
+    }
+  }, [user?.role, forceTheme])
 
   if (!isAuthenticated) {
     return <Login />

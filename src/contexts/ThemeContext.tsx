@@ -5,6 +5,7 @@ type Theme = 'dark' | 'light'
 interface ThemeContextType {
   theme: Theme
   toggleTheme: () => void
+  forceTheme?: (theme: Theme) => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
@@ -16,6 +17,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return savedTheme || 'dark'
   })
 
+  // Verificar si el usuario es comercial y forzar tema claro
+  useEffect(() => {
+    const savedUser = localStorage.getItem('nike_user')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        if (user.role === 'comercial') {
+          setTheme('light')
+        }
+      } catch {
+        // Ignorar error de parsing
+      }
+    }
+  }, [])
+
   // Aplicar tema al documento
   useEffect(() => {
     const root = document.documentElement
@@ -26,15 +42,74 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add('dark-theme')
       root.classList.remove('light-theme')
     }
-    localStorage.setItem('theme', theme)
+    // Solo guardar en localStorage si no es comercial (para no sobrescribir)
+    const savedUser = localStorage.getItem('nike_user')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        if (user.role !== 'comercial') {
+          localStorage.setItem('theme', theme)
+        }
+      } catch {
+        localStorage.setItem('theme', theme)
+      }
+    } else {
+      localStorage.setItem('theme', theme)
+    }
   }, [theme])
 
+  // Escuchar cambios en el usuario para forzar tema claro si es comercial
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedUser = localStorage.getItem('nike_user')
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser)
+          if (user.role === 'comercial') {
+            setTheme('light')
+          }
+        } catch {
+          // Ignorar error de parsing
+        }
+      }
+    }
+
+    // Escuchar cambios en localStorage
+    window.addEventListener('storage', handleStorageChange)
+    
+    // También verificar periódicamente (por si el cambio es en la misma pestaña)
+    const interval = setInterval(() => {
+      handleStorageChange()
+    }, 1000)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      clearInterval(interval)
+    }
+  }, [])
+
   const toggleTheme = () => {
+    // Si es comercial, no permitir cambiar el tema
+    const savedUser = localStorage.getItem('nike_user')
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser)
+        if (user.role === 'comercial') {
+          return // No hacer nada, mantener tema claro
+        }
+      } catch {
+        // Continuar con el toggle normal
+      }
+    }
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
   }
 
+  const forceTheme = (newTheme: Theme) => {
+    setTheme(newTheme)
+  }
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, forceTheme }}>
       {children}
     </ThemeContext.Provider>
   )
